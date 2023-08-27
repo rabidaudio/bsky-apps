@@ -1,7 +1,6 @@
 import http from 'http'
 import events from 'events'
 import express from 'express'
-import path from 'path'
 import { DidResolver, MemoryCache } from '@atproto/did-resolver'
 import { createServer } from './lexicon'
 import feedGeneration from './methods/feed-generation'
@@ -30,9 +29,8 @@ export class FeedGenerator {
     this.cfg = cfg
   }
 
-  static create(cfg: Config) {
+  static create(cfg: Config, db: Database) {
     const app = express()
-    const db = createDb(cfg.databaseUrl)
     const firehose = new FirehoseSubscription(db, cfg.subscriptionEndpoint, cfg.retainHistoryHours)
 
     const didCache = new MemoryCache()
@@ -58,15 +56,19 @@ export class FeedGenerator {
     describeGenerator(server, ctx)
     app.use(server.xrpc.router)
     app.use(wellKnown(ctx))
-    app.use(express.static(path.join(__dirname, 'frontend')))
+    // app.use(express.static(path.join(__dirname, 'frontend')))
 
     return new FeedGenerator(app, db, firehose, cfg)
+  }
+
+  get host(): string {
+    return `http://${this.cfg.listenHost}:${this.cfg.port}`
   }
 
   async start(): Promise<http.Server> {
     await migrateToLatest(this.db)
     this.firehose.run(this.cfg.subscriptionReconnectDelay)
-    this.server = this.app.listen(this.cfg.port, this.cfg.listenHost)
+    this.server = this.app.listen(this.cfg.port /*, this.cfg.listenHost*/)
     await events.once(this.server, 'listening')
     return this.server
   }

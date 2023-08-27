@@ -1,47 +1,109 @@
-import dotenv from 'dotenv'
+import * as yargs from 'yargs'
+
+import { loadConfig } from './config'
+import { createDb, migrateToLatest, rollback } from './db'
 import FeedGenerator from './server'
-import { Config } from './config'
+import ListManager, { getUri } from './util/membership'
 
-export const loadConfig = (): Config => {
-  dotenv.config()
-  const hostname = maybeStr(process.env.FEEDGEN_HOSTNAME) ?? 'example.com'
-  const serviceDid =
-    maybeStr(process.env.FEEDGEN_SERVICE_DID) ?? `did:web:${hostname}`
-  return {
-    port: maybeInt(process.env.PORT) ?? 3000,
-    listenHost: maybeStr(process.env.FEEDGEN_LISTENHOST) ?? 'localhost',
-    databaseUrl: maybeStr(process.env.DATABASE_URL) ?? 'postgresql://localhost:5432/bsky-apps',
-    subscriptionEndpoint:
-      maybeStr(process.env.FEEDGEN_SUBSCRIPTION_ENDPOINT) ??
-      'wss://bsky.social',
-    publisherDid:
-      maybeStr(process.env.FEEDGEN_PUBLISHER_DID) ?? 'did:example:alice',
-    subscriptionReconnectDelay:
-      maybeInt(process.env.FEEDGEN_SUBSCRIPTION_RECONNECT_DELAY) ?? 3000,
-    hostname,
-    serviceDid,
-    retainHistoryHours: maybeInt(process.env.FEEDGEN_RETAIN_HISTORY_HOURS) ?? 48,
-  }
+type CreateArgs = {
+  user: string
+  password: string
+
+  name: string
+  isPublic: boolean
+  members: string[]
 }
 
-const run = async () => {
-  const server = FeedGenerator.create(loadConfig())
-  await server.start()
-  console.log(
-    `🤖 running feed generator at http://${server.cfg.listenHost}:${server.cfg.port}`,
-  )
-}
+const cfg = loadConfig()
+const db = createDb(cfg.databaseUrl)
+const deps = { cfg, db }
 
-const maybeStr = (val?: string) => {
-  if (!val) return undefined
-  return val
-}
+yargs
+  .scriptName("bsky-apps")
+  .usage('$0 <cmd> [args]')
+  .command('migrate:latest', 'Migrate to the latest version',
+    async (argv) => {
+      console.log(`Migrating database`)
+      await migrateToLatest(db)
+    })
+  .command('migrate:rollback', 'Downgrade database',
+    (yargs) => yargs.option('steps', {
+      demandOption: true,
+      default: 1,
+      type: 'number'
+    }),
+    async function (argv: { steps: number }) {
+      console.log(`Rolling back ${argv.steps} steps`)
+      for (let i = 0; i < argv.steps; i++) {
+        await rollback(db)
+      }
+    })
+  .command('start', 'Run the web server', async (argv) => {
+    const server = FeedGenerator.create(cfg, db)
+    await server.start()
+    console.log(`🤖 running feed generator at ${server.host}`)
+  })
+  .command('create <name> [members...]', 'Create a new feed',
+    (yargs) =>
+      yargs.option('name', {
+        demandOption: true,
+        type: 'string'
+      })
+      .option('user', {
+        alias: 'u',
+        description: 'Your handle on BlueSky',
+        demandOption: true,
+        type: 'string'
+      })
+      .option('password', {
+        description: 'Your BlueSky password, or better yet an app token',
+        alias: 'p',
+        demandOption: true,
+        type: 'string'
+      })
+      .option('isPublic', {
+        alias: 'public',
+        description: 'If the list can be used by anyone or is restricted to only the user who created it',
+        type: 'boolean',
+        demandOption: true,
+        default: false
+      })
+      .option('members', {
+        description: 'A list of handles that should be included in the feed',
+        type: 'array',
+        demandOption: true,
+      }),
+    async (argv) => {
+      const { name, user, password, isPublic, members } = argv
+      const manager = new ListManager(deps, { identifier: user, password })
+      const list = await manager.createFeed(name, isPublic, members as string[])
+      console.log(`✅ Created list ${list.name} for ${manager.ownerHandle} with ${members.length} members: ${getUri(list)}`)
+    })
+  // .command('update', 'Change the members of a feed', (yargs) => {}, async (argv) => {})
+  .command('delete [listId]', 'Delete a feed',
+    (yargs) =>
+      yargs.option('listId', {
+        demandOption: true,
+        type: 'string'
+      })
+      .option('user', {
+        alias: 'u',
+        description: 'Your handle on BlueSky',
+        demandOption: true,
+        type: 'string'
+      })
+      .option('password', {
+        description: 'Your BlueSky password, or better yet an app token',
+        alias: 'p',
+        demandOption: true,
+        type: 'string'
+      }),
+    async (argv) => {
+      const manager = new ListManager(deps, { identifier: argv.user, password: argv.password })
+      const list = await manager.deleteFeed(argv.listId)
+      console.log(`🗑️ Deleted list ${list.name} for ${manager.ownerHandle}: ${getUri(list)}`)
 
-const maybeInt = (val?: string) => {
-  if (!val) return undefined
-  const int = parseInt(val, 10)
-  if (isNaN(int)) return undefined
-  return int
-}
-
-run()
+    })
+  .help()
+  .onFinishCommand(async () => db.destroy())
+  .argv

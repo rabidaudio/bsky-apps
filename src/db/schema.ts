@@ -2,13 +2,19 @@ export type DatabaseSchema = {
   post: Post
   sub_state: SubState
   membership: Membership
+  list: List
+}
+
+export type List = {
+  id: string
+  ownerDid: string
+  name: string
+  isPublic: boolean
 }
 
 export type Membership = {
-  // id: number
-  ownerDid: string
   memberDid: string
-  listId: number
+  listId: string
 }
 
 export type Post = {

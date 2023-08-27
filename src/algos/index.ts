@@ -1,15 +1,20 @@
-import { AppContext } from '../config'
+import { AtUri } from '@atproto/uri'
 import {
   QueryParams,
   OutputSchema as AlgoOutput,
 } from '../lexicon/types/app/bsky/feed/getFeedSkeleton'
-import * as listFeed from './list-feed'
+
+import { AppContext } from '../config'
+import { createHandler } from './list-feed'
+import { getUri } from '../util/membership'
 
 type AlgoHandler = (ctx: AppContext, params: QueryParams) => Promise<AlgoOutput>
 
-const algos: Record<string, AlgoHandler> = {
-  // name max-length 15 characters
-  'list-feed-1': listFeed.createHandler(1),
+export const getFeedHandler = async (ctx: AppContext, rkey: string): Promise<AlgoHandler | undefined> => {
+  return createHandler(rkey)
 }
 
-export default algos
+export const getAllFeedUris = async (ctx: AppContext): Promise<AtUri[]> => {
+  const res = await ctx.db.selectFrom('list').select(['id', 'ownerDid']).limit(1000).execute()
+  return res.map(list => getUri(list))
+}

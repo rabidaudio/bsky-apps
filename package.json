@@ -9,7 +9,8 @@
   "scripts": {
     "publishFeed": "ts-node scripts/publishFeedGen.ts",
     "migrate": "ts-node scripts/migrate.ts",
-    "start": "ts-node src/index.ts",
+    "start": "ts-node src/index.ts start",
+    "app": "ts-node src/index.ts",
     "start:prod": "node dist",
     "build": "tsc"
   },

@@ -4,22 +4,33 @@ import { AppContext } from '../config'
 
 type AlgoHandler = (ctx: AppContext, params: QueryParams) => Promise<AlgoOutput>
 
-export const createHandler = (listId: number): AlgoHandler => {
+export const createHandler = (listId: string): AlgoHandler => {
   return async (ctx: AppContext, params: QueryParams) => {
-    const ownerDid = ctx.requesterDid
-    if (!ownerDid) {
-      throw new InvalidRequestError('not authenticated')
+    const list = await ctx.db.selectFrom('list')
+      .selectAll()
+      .where('id', '=', listId)
+      .limit(1)
+      .executeTakeFirst()
+
+    if (!list) {
+      throw new InvalidRequestError(`No list found: ${listId}`)
     }
 
-    // TODO: check if owner has made a list and return a helpful error message instead of an empty
-    // timeline
+    if (!list.isPublic) {
+      const ownerDid = ctx.requesterDid
+      if (!ownerDid) {
+        throw new InvalidRequestError('Not authenticated')
+      }
+      if (ownerDid != list.ownerDid) {
+        throw new InvalidRequestError('Permission denied')
+      }
+    }
 
     let builder = ctx.db
       .selectFrom('post')
       .selectAll()
       .innerJoin('membership', 'membership.memberDid', 'post.author')
       .where('membership.listId', '=', listId)
-      .where('membership.ownerDid', '=', ownerDid)
       .orderBy('indexedAt', 'desc')
       .orderBy('cid', 'desc')
       .limit(params.limit)
