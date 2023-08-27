@@ -11,9 +11,9 @@ export const createDb = (connectionString: string): Database => {
         max: 10,
         // Heroku settings, see
         // https://devcenter.heroku.com/articles/connecting-heroku-postgres#connecting-in-node-js
-        ssl: {
+        ssl: process.env.NODE_ENV === 'production' ? {
           rejectUnauthorized: false
-        }
+        } : false
       })
     }),
   })

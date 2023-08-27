@@ -1,6 +1,7 @@
 import http from 'http'
 import events from 'events'
 import express from 'express'
+import path from 'path'
 import { DidResolver, MemoryCache } from '@atproto/did-resolver'
 import { createServer } from './lexicon'
 import feedGeneration from './methods/feed-generation'
@@ -57,6 +58,7 @@ export class FeedGenerator {
     describeGenerator(server, ctx)
     app.use(server.xrpc.router)
     app.use(wellKnown(ctx))
+    app.use(express.static(path.join(__dirname, 'frontend')))
 
     return new FeedGenerator(app, db, firehose, cfg)
   }
