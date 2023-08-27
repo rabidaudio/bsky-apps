@@ -5,6 +5,7 @@ export type AppContext = {
   db: Database
   didResolver: DidResolver
   cfg: Config
+  requesterDid?: string
 }
 
 export type Config = {
@@ -16,4 +17,5 @@ export type Config = {
   serviceDid: string
   publisherDid: string
   subscriptionReconnectDelay: number
+  retainHistoryHours: number
 }

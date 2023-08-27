@@ -13,14 +13,35 @@ migrations['202308271129'] = {
     await db.schema
       .createTable('membership')
       .addColumn('id', 'integer', (col) => col.autoIncrement().primaryKey())
-      .addColumn('owner_did', 'varchar', (col) => col.notNull())
-      .addColumn('member_did', 'varchar', (col) => col.notNull())
-      .addColumn('list', 'integer', (col) => col.notNull())
-      .addUniqueConstraint('uniq_memberships', ['owner_did', 'member_did', 'list'])
+      .addColumn('ownerDid', 'varchar', (col) => col.notNull())
+      .addColumn('memberDid', 'varchar', (col) => col.notNull())
+      .addColumn('listId', 'integer', (col) => col.notNull())
+      .addUniqueConstraint('uniq_memberships', ['ownerDid', 'memberDid', 'listId'])
       .execute()
+    
+    await db.schema
+      .createIndex('idx_membership_on_member')
+      .on('membership')
+      .column('memberDid')
+      .execute()
+    await db.schema
+      .createIndex('idx_membership_on_list_and_owner')
+      .on('membership')
+      .columns(['listId', 'ownerDid'])
+      .execute()
+
+    await db.schema.alterTable('post')
+      .addColumn('author', 'varchar', (col) => col.notNull())
+      .execute()
+
+    await db.schema.createIndex('idx_post_on_author').on('post').column('author').execute()
+    await db.schema.createIndex('idx_post_on_indexedAt').on('post').column('indexedAt').execute()
   },
   async down(db: Kysely<unknown>) {
     await db.schema.dropTable('membership').execute()
+    await db.schema.dropIndex('idx_post_on_author').execute()
+    await db.schema.dropIndex('idx_post_on_indexedAt').execute()
+    await db.schema.alterTable('post').dropColumn('author').execute()
   }
 }
 

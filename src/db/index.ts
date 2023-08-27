@@ -17,4 +17,10 @@ export const migrateToLatest = async (db: Database) => {
   if (error) throw error
 }
 
+export const rollback = async (db: Database) => {
+  const migrator = new Migrator({ db, provider: migrationProvider })
+  const { error } = await migrator.migrateDown()
+  if (error) throw error
+}
+
 export type Database = Kysely<DatabaseSchema>

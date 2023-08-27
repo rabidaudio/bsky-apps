@@ -1,3 +1,4 @@
+import dayjs from 'dayjs'
 import { Subscription } from '@atproto/xrpc-server'
 import { cborToLexRecord, readCar } from '@atproto/repo'
 import { BlobRef } from '@atproto/lexicon'
@@ -16,7 +17,7 @@ import { Database } from '../db'
 export abstract class FirehoseSubscriptionBase {
   public sub: Subscription<RepoEvent>
 
-  constructor(public db: Database, public service: string) {
+  constructor(public db: Database, public service: string, public retainHours: number) {
     this.sub = new Subscription({
       service: service,
       method: ids.ComAtprotoSyncSubscribeRepos,
@@ -47,12 +48,22 @@ export abstract class FirehoseSubscriptionBase {
         // update stored cursor every 20 events or so
         if (isCommit(evt) && evt.seq % 20 === 0) {
           await this.updateCursor(evt.seq)
+
+          // also wipe old posts
+          await this.truncateToMostRecent()
         }
       }
     } catch (err) {
       console.error('repo subscription errored', err)
       setTimeout(() => this.run(subscriptionReconnectDelay), subscriptionReconnectDelay)
     }
+  }
+
+  async truncateToMostRecent() {
+    const retainSince = dayjs().subtract(this.retainHours, 'hours')
+    await this.db.deleteFrom('post')
+      .where('indexedAt', '<', retainSince.toISOString())
+      .execute()
   }
 
   async updateCursor(cursor: number) {
