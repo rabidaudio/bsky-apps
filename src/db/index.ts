@@ -6,7 +6,15 @@ import { migrationProvider } from './migrations'
 export const createDb = (connectionString: string): Database => {
   return new Kysely<DatabaseSchema>({
     dialect: new PostgresDialect({
-      pool: new Pool({ connectionString, max: 10 })
+      pool: new Pool({
+        connectionString,
+        max: 10,
+        // Heroku settings, see
+        // https://devcenter.heroku.com/articles/connecting-heroku-postgres#connecting-in-node-js
+        ssl: {
+          rejectUnauthorized: false
+        }
+      })
     }),
   })
 }
