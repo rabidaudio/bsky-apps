@@ -1,15 +1,12 @@
 #!/usr/bin/env node
-
-import dotenv from 'dotenv'
 import * as yargs from 'yargs'
-import { createDb, migrateToLatest, rollback } from '../src/db'
 
-dotenv.config()
-const sqliteLocation =process.env.FEEDGEN_SQLITE_LOCATION
-if (!sqliteLocation) {
-    throw new Error("`FEEDGEN_SQLITE_LOCATION` required")
-}
-const db = createDb(sqliteLocation)
+import { createDb, migrateToLatest, rollback } from '../src/db'
+import { loadConfig } from '../src/index'
+
+
+const { databaseUrl } = loadConfig()
+const db = createDb(databaseUrl)
 
 yargs
   .scriptName("migrate")

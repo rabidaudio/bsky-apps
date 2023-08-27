@@ -1,15 +1,16 @@
 import dotenv from 'dotenv'
 import FeedGenerator from './server'
+import { Config } from './config'
 
-const run = async () => {
+export const loadConfig = (): Config => {
   dotenv.config()
   const hostname = maybeStr(process.env.FEEDGEN_HOSTNAME) ?? 'example.com'
   const serviceDid =
     maybeStr(process.env.FEEDGEN_SERVICE_DID) ?? `did:web:${hostname}`
-  const server = FeedGenerator.create({
-    port: maybeInt(process.env.FEEDGEN_PORT) ?? 3000,
-    listenhost: maybeStr(process.env.FEEDGEN_LISTENHOST) ?? 'localhost',
-    sqliteLocation: maybeStr(process.env.FEEDGEN_SQLITE_LOCATION) ?? ':memory:',
+  return {
+    port: maybeInt(process.env.PORT) ?? 3000,
+    listenHost: maybeStr(process.env.FEEDGEN_LISTENHOST) ?? 'localhost',
+    databaseUrl: maybeStr(process.env.DATABASE_URL) ?? 'postgresql://localhost:5432/bsky-apps',
     subscriptionEndpoint:
       maybeStr(process.env.FEEDGEN_SUBSCRIPTION_ENDPOINT) ??
       'wss://bsky.social',
@@ -20,10 +21,14 @@ const run = async () => {
     hostname,
     serviceDid,
     retainHistoryHours: maybeInt(process.env.FEEDGEN_RETAIN_HISTORY_HOURS) ?? 48,
-  })
+  }
+}
+
+const run = async () => {
+  const server = FeedGenerator.create(loadConfig())
   await server.start()
   console.log(
-    `🤖 running feed generator at http://${server.cfg.listenhost}:${server.cfg.port}`,
+    `🤖 running feed generator at http://${server.cfg.listenHost}:${server.cfg.port}`,
   )
 }
 

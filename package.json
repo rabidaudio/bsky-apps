@@ -1,10 +1,10 @@
 {
-  "name": "feed-generator",
+  "name": "bsky-apps",
   "version": "1.0.0",
-  "description": "atproto feed generator starter kit",
+  "description": "Various Bluesky integrations",
   "main": "index.js",
-  "repository": "git@github.com:bluesky-social/feed-generator.git",
-  "author": "dholms <dtholmgren@gmail.com>",
+  "repository": "git@github.com:rabidaudio/bsky-apps",
+  "author": "Julien <cjk@rabidaudiop.com>",
   "license": "MIT",
   "scripts": {
     "publishFeed": "ts-node scripts/publishFeedGen.ts",
@@ -19,17 +19,18 @@
     "@atproto/repo": "^0.1.0",
     "@atproto/uri": "^0.0.2",
     "@atproto/xrpc-server": "^0.2.0",
-    "better-sqlite3": "^8.5.2",
     "dayjs": "^1.11.9",
     "dotenv": "^16.0.3",
     "express": "^4.18.2",
     "kysely": "^0.22.0",
-    "multiformats": "^9.9.0"
+    "multiformats": "^9.9.0",
+    "pg": "^8.11.3"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.4",
     "@types/express": "^4.17.17",
     "@types/node": "^20.1.2",
+    "@types/pg": "^8.10.2",
     "@types/yargs": "^17.0.24",
     "ts-node": "^10.9.1",
     "typescript": "^5.0.4",

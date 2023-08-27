@@ -12,7 +12,7 @@ migrations['202308271129'] = {
   async up(db: Kysely<unknown>) {
     await db.schema
       .createTable('membership')
-      .addColumn('id', 'integer', (col) => col.autoIncrement().primaryKey())
+      .addColumn('id', 'serial', (col) => col.primaryKey())
       .addColumn('ownerDid', 'varchar', (col) => col.notNull())
       .addColumn('memberDid', 'varchar', (col) => col.notNull())
       .addColumn('listId', 'integer', (col) => col.notNull())

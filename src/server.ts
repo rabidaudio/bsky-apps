@@ -31,7 +31,7 @@ export class FeedGenerator {
 
   static create(cfg: Config) {
     const app = express()
-    const db = createDb(cfg.sqliteLocation)
+    const db = createDb(cfg.databaseUrl)
     const firehose = new FirehoseSubscription(db, cfg.subscriptionEndpoint, cfg.retainHistoryHours)
 
     const didCache = new MemoryCache()
@@ -64,7 +64,7 @@ export class FeedGenerator {
   async start(): Promise<http.Server> {
     await migrateToLatest(this.db)
     this.firehose.run(this.cfg.subscriptionReconnectDelay)
-    this.server = this.app.listen(this.cfg.port, this.cfg.listenhost)
+    this.server = this.app.listen(this.cfg.port, this.cfg.listenHost)
     await events.once(this.server, 'listening')
     return this.server
   }
