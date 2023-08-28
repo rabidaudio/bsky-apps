@@ -9,7 +9,7 @@ async function withDeps (callback: (deps: Dependencies) => Promise<void>) {
   const cfg = loadConfig()
   const db = createDb(cfg.databaseUrl)
   try {
-    callback({ cfg, db })
+    await callback({ cfg, db })
   } finally {
     await db.destroy()
   }
