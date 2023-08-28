@@ -13,7 +13,6 @@ import { FirehoseSubscription } from './subscription'
 import { AppContext, Config, Dependencies } from './config'
 import wellKnown from './well-known'
 import apiEndpoints from './api'
-import { HandleCache } from './util/handle'
 
 export class FeedGenerator {
   public app: express.Application

@@ -1,4 +1,3 @@
-import { AtpAgent } from '@atproto/api'
 import SqliteDb from 'better-sqlite3'
 import { Kysely, Generated, SqliteDialect } from 'kysely'
 
@@ -14,8 +13,6 @@ type Schema = {
 
 type DB = Kysely<Schema> 
 
-export class InvalidHandleError extends Error {}
-
 // This creates an in-memory cache of handle-did conversions.
 // Rather than an LRU cache, it creates an in-memory sqlite table,
 // so that lookups can happen in either direction. This takes a slight
@@ -23,10 +20,14 @@ export class InvalidHandleError extends Error {}
 export class HandleCache {
     private db: DB
     private prepared: boolean
+    public max: number
+    public ttl: number
 
     // max number of records to retain, max amount of time to retain
-    constructor(public max: number, public ttl: number) {
+    constructor({ max, ttl }: { max: number, ttl: number }) {
         this.prepared = false
+        this.max = max
+        this.ttl = ttl
         this.db = new Kysely<Schema>({
             dialect: new SqliteDialect({
                 database: new SqliteDb(":memory:"),
@@ -110,22 +111,4 @@ export class HandleCache {
             .execute()
         return otherValue
     }
-}
-
-export const lookupHandle = async (did: string, agent: AtpAgent, handleCache: HandleCache): Promise<string> => {
-    return handleCache.fetchHandle(did, async () => {
-        const res = await agent.api.app.bsky.actor.getProfile({ actor: did })
-        return res.data.handle
-    })
-}
-
-export const lookupDid = async (handle: string, agent: AtpAgent, handleCache: HandleCache): Promise<string> => {
-    return handleCache.fetchDid(handle, async() => {
-        try {
-            const res = await agent.resolveHandle({ handle })
-            return res.data.did
-        } catch (err) {
-            throw new InvalidHandleError(`Unable to resolve handle "${handle}"`, { cause: err })
-        }
-    })
 }

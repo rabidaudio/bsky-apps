@@ -4,11 +4,13 @@ import { DidResolver } from '@atproto/did-resolver'
 
 import { Database, createDb } from './db'
 import { HandleCache } from './util/handle'
+import { AtpApi, AtpFactory } from './util/atp'
 
 export type Dependencies = {
-  db: Database
   cfg: Config
-  handleCache: HandleCache
+  db: Database
+  handleCache: HandleCache | null
+  atpFactory: AtpFactory
 }
 
 export type AppContext = Dependencies & {
@@ -66,9 +68,12 @@ export const loadConfig = (): Config => {
 export const createDependencies = (): Dependencies => {
   const cfg = loadConfig()
   const db = createDb(cfg.databaseUrl)
-  const { max, ttl } = cfg.handleCache
-  const handleCache = new HandleCache(max, ttl)
-  return { cfg, db, handleCache }
+  const handleCache = new HandleCache(cfg.handleCache)
+  const atpFactory: AtpFactory = (loginInfo) => AtpApi.create(loginInfo, {
+    readOnly: process.env.NODE_ENV !== 'production',
+    handleCache
+  })
+  return { cfg, db, handleCache, atpFactory }
 }
 
 const maybeStr = (val?: string) => {

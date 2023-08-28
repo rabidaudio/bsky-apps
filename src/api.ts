@@ -1,11 +1,10 @@
 import express, { Request, Response, NextFunction, Router, RequestHandler } from 'express'
+import bodyParser from 'body-parser'
 import { NoResultError } from 'kysely'
-
-import { AtpAgent } from '@atproto/api'
 
 import { AppContext } from './config'
 import ListManager, { ForbiddenError } from './util/membership'
-import { InvalidHandleError } from './util/handle'
+import { Atp, InvalidHandleError } from './util/atp'
 
 
 class UnauthenticatedError extends Error {}
@@ -48,34 +47,29 @@ export type ListResponse = {
     name: string
     isPublic: boolean
     memberHandles: string[]
+    createdAt: Date
 }
 
 export default function makeRouter (ctx: AppContext): Router {
     var router = express.Router()
+    router.use(bodyParser.json())
+    router.use(renderErrors)
 
-    const authenticate = (req: Request, res: Response, next: NextFunction) => {
+    const authenticate = (handler: (req: Request, res: Response, api: Atp) => Promise<void>): RequestHandler => (req: Request, res: Response) => {
         const { identifier, password } = req.body
         if (!identifier || !password) {
             throw new UnauthenticatedError('Credentials required')
         }
-        const agent = new AtpAgent({ service: 'https://bsky.social' })
-        agent.login({ identifier, password }).then(res => {
-            if (!res.success) {
+        ctx.atpFactory({ identifier, password }).then(api => {
+            if (api === null) {
                 throw new UnauthenticatedError('Credentials invalid')
             }
-            (res as any).agent = agent
-            next()
-        }).catch(next)
+            handler(req, res, api)
+        })
     }
 
     const listEndpoint = (handler: (req: Request, res: Response, listManager: ListManager) => Promise<void>): RequestHandler =>
-        wrapAsync((req, res) => {
-            const agent: AtpAgent = (req as any).agent
-            const manager = new ListManager(ctx, agent)
-            return handler(req, res, manager)
-        })
-        
-    router.use(renderErrors, authenticate)
+        authenticate((req, res, api) => handler(req, res, new ListManager(ctx, api)))
     
     // return the list(s) a user has created and its members
     router.get('/lists', listEndpoint(async (req: Request, res: Response, manager: ListManager) => {

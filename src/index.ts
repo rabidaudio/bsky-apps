@@ -4,7 +4,6 @@ import { Dependencies, createDependencies } from './config'
 import { migrateToLatest, rollback } from './db'
 import FeedGenerator from './server'
 import ListManager from './util/membership'
-import { AtpAgent } from '@atproto/api'
 
 async function withDeps (callback: (deps: Dependencies) => Promise<void>) {
   const deps = createDependencies()
@@ -78,11 +77,11 @@ yargs
     async (argv) => {
       await withDeps(async (deps) => {
         const { name, user, password, isPublic, members } = argv
-        const agent = new AtpAgent({ service: 'https://bsky.social' })
-        await agent.login({ identifier: user, password })
-        const manager = new ListManager(deps, agent)
+        const api = await deps.atpFactory({ identifier: user, password })
+        if (!api) throw new Error("Not authenticated")
+        const manager = new ListManager(deps, api)
         const list = await manager.createFeed(name, isPublic, members as string[])
-        console.log(`✅ Created ${list.isPublic ? 'public' : 'private'} list ${list.name} [${list.id}] for ${manager.ownerHandle} with ${members.length} members: ${list.uri}`)
+        console.log(`✅ Created ${list.isPublic ? 'public' : 'private'} list ${list.name} [${list.id}] for ${user} with ${members.length} members: ${list.uri}`)
       })
     })
   // .command('update', 'Change the members of a feed', (yargs) => {}, async (argv) => {})
@@ -106,11 +105,11 @@ yargs
       }),
     async (argv) => {
       await withDeps(async (deps) => {
-        const agent = new AtpAgent({ service: 'https://bsky.social' })
-        await agent.login({ identifier: argv.user, password: argv.password })
-        const manager = new ListManager(deps, agent)
+        const api = await deps.atpFactory({ identifier: argv.user, password: argv.password })
+        if (!api) throw new Error("Not authenticated")
+        const manager = new ListManager(deps, api)
         const list = await manager.deleteFeed(argv.listId)
-        console.log(`🗑️ Deleted ${list.isPublic ? 'public' : 'private'} list ${list.name} [${list.id}] for ${manager.ownerHandle}`)
+        console.log(`🗑️ Deleted ${list.isPublic ? 'public' : 'private'} list ${list.name} [${list.id}] for ${argv.user}`)
       })
     })
   .help()

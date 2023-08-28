@@ -1,4 +1,4 @@
-import { Kysely, Migration, MigrationProvider } from 'kysely'
+import { Kysely, Migration, MigrationProvider, sql } from 'kysely'
 
 const migrations: Record<string, Migration> = {}
 
@@ -6,6 +6,19 @@ export const migrationProvider: MigrationProvider = {
   async getMigrations() {
     return migrations
   },
+}
+
+migrations['202308281223'] = {
+  async up(db: Kysely<unknown>) {
+    await db.schema.alterTable('list')
+      .addColumn('createdAt', 'timestamp', (opts) => opts.notNull().defaultTo(sql`now()`))
+      .execute()
+    await db.schema.createIndex("idx_list_on_created_at").on('list').column('createdAt').execute()
+  },
+  async down(db: Kysely<unknown>) {
+    await db.schema.dropIndex('idx_list_on_created_at').execute()
+    await db.schema.alterTable('list').dropColumn('createdAt').execute()
+  }
 }
 
 migrations['202308271617'] = {

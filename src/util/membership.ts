@@ -1,19 +1,19 @@
 import crypto from 'crypto'
 
-import { AtUri, AtpAgent, AtpAgentLoginOpts } from '@atproto/api'
+import { AtUri } from '@atproto/api'
 import { ids } from '../lexicon/lexicons'
 
 import { Dependencies } from '../config'
 import { List } from '../db/schema'
 import { ListResponse } from '../api'
-import { lookupDid, lookupHandle } from './handle'
+import { Atp } from './atp'
 
 export const getUri = (list: { ownerDid: string, id: string }): AtUri =>
     AtUri.make(list.ownerDid, 'app.bsky.feed.generator', list.id)
 
 export class ForbiddenError extends Error {}
 
-const generateUniqueListId = (): string => {
+export const generateUniqueListId = (): string => {
     // list names can be up to 15 lowercase chars. Here we generate random ids for these lists.
     // https://atproto.com/specs/record-key
     // log2(16^15) = 60 bits = 7.5 bytes
@@ -22,16 +22,16 @@ const generateUniqueListId = (): string => {
 }
 
 const listToListResponse = (list: List, memberHandles: string[]): ListResponse => {
-    const { name, isPublic, id } = list
+    const { name, isPublic, id, createdAt } = list
     return {
-        id, name, isPublic,
+        id, name, isPublic, createdAt,
         memberHandles,
         uri: getUri(list).toString(),
     }
 }
 
 export class ListManager {
-    constructor(public ctx: Dependencies, public agent: AtpAgent) {}
+    constructor(private ctx: Dependencies, private api: Atp) {}
 
     async getLists(): Promise<ListResponse[]> {
         const rows = await this.ctx.db.selectFrom('list')
@@ -41,10 +41,11 @@ export class ListManager {
                 'list.isPublic',
                 'list.name',
                 'list.ownerDid',
+                'list.createdAt',
                 'membership.memberDid'
             ])
-            .where('list.ownerDid', '=', this.ownerDid)
-            .orderBy('list.id', 'asc')
+            .where('list.ownerDid', '=', this.api.ownerDid)
+            .orderBy('list.createdAt', 'desc')
             .orderBy('membership.id', 'asc')
             .execute()
         // This is the folly of using a low-level ORM: no relations. We have
@@ -52,14 +53,14 @@ export class ListManager {
         // relations. This sucks.
         let lists: { [id: string]: ListResponse } = {}
         for (const row of rows) {
-            const handle = row.memberDid ? await lookupHandle(row.memberDid, this.agent, this.ctx.handleCache) : null
+            const handle = row.memberDid ? await this.api.resolveHandle(row.memberDid) : null
             const existing = lists[row.id]
             if (existing && handle) {
                 existing.memberHandles.push(handle)
             } else {
-                const { id, name, isPublic } = row
+                const { id, name, isPublic, createdAt } = row
                 lists[row.id] = {
-                    id, name, isPublic,
+                    id, name, isPublic, createdAt,
                     uri: getUri(row).toString(),
                     memberHandles: (handle ? [handle] : [])
                 }
@@ -74,7 +75,7 @@ export class ListManager {
             .select([
                 qb => qb.fn.count<number>('list.id').as('existingListCount')
             ])
-            .where('ownerDid', '=', this.ownerDid)
+            .where('ownerDid', '=', this.api.ownerDid)
             .executeTakeFirstOrThrow()
         if (existingListCount >= this.ctx.cfg.maxListsPerUser) {
             throw new ForbiddenError("You've reached the maximum number of lists")
@@ -84,30 +85,28 @@ export class ListManager {
         return await this.ctx.db.transaction().execute(async (trx) => {
             // create the list in the database
             const list = await trx.insertInto('list')
-                .values({ id: generateUniqueListId(), ownerDid: this.ownerDid, name, isPublic })
+                .values({ id: generateUniqueListId(), ownerDid: this.api.ownerDid, name, isPublic, createdAt: new Date() })
                 .returningAll()
                 .executeTakeFirstOrThrow()            
     
             // convert handles to dids and save members
-            const memberDids = await this.lookupHandleDids(memberHandles)
+            const memberDids = await this.resolveHandles(memberHandles)
             await trx.insertInto('membership')
                 .values(memberDids.map(memberDid => ({ listId: list.id, memberDid })))
                 .execute()
     
-            if (this.isProduction) {
-                await this.agent.api.com.atproto.repo.putRecord({
-                    repo: this.ownerDid,
-                    collection: ids.AppBskyFeedGenerator,
-                    rkey: list.id,
-                    record: {
-                        did: this.ctx.cfg.serviceDid,
-                        displayName: list.name,
-                        description: `A custom list feed for ${this.ownerHandle}, generated using ${this.ctx.cfg.hostname}`,
-                        // avatar: avatarRef, // TODO: add images to feeds
-                        createdAt: new Date().toISOString(),
-                    },
-                })
-            }
+            await this.api.putRepo({
+                repo: this.api.ownerDid,
+                collection: ids.AppBskyFeedGenerator,
+                rkey: list.id,
+                record: {
+                    did: this.ctx.cfg.serviceDid,
+                    displayName: list.name,
+                    description: `A custom list feed for ${this.api.ownerHandle}, generated using ${this.ctx.cfg.hostname}`,
+                    // avatar: avatarRef, // TODO: add images to feeds
+                    createdAt: new Date().toISOString(),
+                },
+            })
 
             return listToListResponse(list, memberHandles)
         })
@@ -115,7 +114,7 @@ export class ListManager {
 
     async updateFeed(listId: string, name: string | undefined, isPublic: boolean | undefined, memberHandles: string[]): Promise<ListResponse> {
         let list = await this.getList(listId)
-        if (list.ownerDid != this.ownerDid) {
+        if (list.ownerDid != this.api.ownerDid) {
             throw new ForbiddenError("Forbidden: this list belongs to someone else")
         }
         return await this.ctx.db.transaction().execute(async (trx) => {
@@ -128,19 +127,19 @@ export class ListManager {
 
             // update membership
             await trx.deleteFrom('membership').where('listId', '=', listId).execute()
-            const rows = (await this.lookupHandleDids(memberHandles)).map(memberDid => ({ listId, memberDid }))
+            const rows = (await this.resolveHandles(memberHandles)).map(memberDid => ({ listId, memberDid }))
             await trx.insertInto('membership').values(rows).execute()
             
-            if (name !== undefined && this.isProduction) {
+            if (name !== undefined) {
                 // update the name on the api
-                await this.agent.api.com.atproto.repo.putRecord({
-                    repo: this.ownerDid,
+                await this.api.putRepo({
+                    repo: this.api.ownerDid,
                     collection: ids.AppBskyFeedGenerator,
                     rkey: list.id,
                     record: {
                         did: this.ctx.cfg.serviceDid,
                         displayName: list.name,
-                        description: `A custom list feed for ${this.ownerHandle}, generated using ${this.ctx.cfg.hostname}`,
+                        description: `A custom list feed for ${this.api.ownerHandle}, generated using ${this.ctx.cfg.hostname}`,
                     },
                 })
             }
@@ -151,7 +150,7 @@ export class ListManager {
 
     async deleteFeed(listId: string): Promise<List> {
         const list = await this.getList(listId)
-        if (list.ownerDid != this.ownerDid) {
+        if (list.ownerDid != this.api.ownerDid) {
             throw new ForbiddenError("Forbidden: this list belongs to someone else")
         }
         return await this.ctx.db.transaction().execute(async (trx) => {
@@ -159,13 +158,11 @@ export class ListManager {
             await trx.deleteFrom('membership').where('listId', '=', listId).execute()
             await trx.deleteFrom('list').where('id', '=', listId).execute()
 
-            if (this.isProduction) {
-                await this.agent.api.com.atproto.repo.deleteRecord({
-                    repo: this.ownerDid,
-                    collection: ids.AppBskyFeedGenerator,
-                    rkey: list.id,
-                })
-            }
+            await this.api.deleteRepo({
+                repo: this.api.ownerDid,
+                collection: ids.AppBskyFeedGenerator,
+                rkey: list.id,
+            })
             return list
         })
     }
@@ -177,28 +174,14 @@ export class ListManager {
             .limit(1)
             .executeTakeFirstOrThrow()
 
-        if (list.ownerDid !== this.ownerDid) {
+        if (list.ownerDid !== this.api.ownerDid) {
             throw new ForbiddenError("Forbidden: this list belongs to someone else")
         }
         return list
     }
 
-    get ownerHandle(): string {
-        return this.agent.session!!.handle
-    }
-
-    get ownerDid(): string {
-        return this.agent.session!!.did
-    }
-
-    get isProduction() {
-        return process.env.NODE_ENV === 'production'
-    }
-
-    private async lookupHandleDids(handles: string[]): Promise<string[]> {
-        return await Promise.all(
-            handles.map(handle => lookupDid(handle, this.agent, this.ctx.handleCache))
-        )
+    private resolveHandles(handles: string[]): Promise<string[]> {
+        return Promise.all(handles.map(handle => this.api.resolveHandle(handle)))
     }
 }
 

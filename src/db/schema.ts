@@ -12,6 +12,7 @@ export type List = {
   ownerDid: string
   name: string
   isPublic: boolean
+  createdAt: Date
 }
 
 export type Membership = {
