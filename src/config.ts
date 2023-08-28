@@ -1,12 +1,12 @@
 import dotenv from 'dotenv'
 
-import { DidResolver } from '@atproto/did-resolver'
+import { type DidResolver } from '@atproto/did-resolver'
 
-import { Database, createDb } from './db'
+import { type Database, createDb } from './db'
 import { HandleCache } from './util/handle'
-import { AtpApi, AtpFactory } from './util/atp'
+import { AtpApi, type AtpFactory } from './util/atp'
 
-export type Dependencies = {
+export interface Dependencies {
   cfg: Config
   db: Database
   handleCache: HandleCache | null
@@ -17,7 +17,7 @@ export type AppContext = Dependencies & {
   didResolver: DidResolver
 }
 
-export type Config = {
+export interface Config {
   port: number
   listenHost: string
   hostname: string
@@ -62,7 +62,7 @@ export const loadConfig = (): Config => {
     logErrors: true,
     handleCache: {
       max: 50_000,
-      ttl: (7 * 24 * 60 * 60 * 1000), // make sure to re-resolve handles every week since people can update them
+      ttl: (7 * 24 * 60 * 60 * 1000) // make sure to re-resolve handles every week since people can update them
     }
   }
 }
@@ -71,20 +71,20 @@ export const createDependencies = (): Dependencies => {
   const cfg = loadConfig()
   const db = createDb(cfg.databaseUrl)
   const handleCache = new HandleCache(cfg.handleCache)
-  const atpFactory: AtpFactory = (loginInfo) => AtpApi.create(loginInfo, {
+  const atpFactory: AtpFactory = async (loginInfo) => await AtpApi.create(loginInfo, {
     readOnly: process.env.NODE_ENV !== 'production',
     handleCache
   })
   return { cfg, db, handleCache, atpFactory }
 }
 
-const maybeStr = (val?: string) => {
-  if (!val) return undefined
+const maybeStr = (val?: string): string | undefined => {
+  if (val === undefined || val.length === 0) return undefined
   return val
 }
 
-const maybeInt = (val?: string) => {
-  if (!val) return undefined
+const maybeInt = (val?: string): number | undefined => {
+  if (val === undefined || val.length === 0) return undefined
   const int = parseInt(val, 10)
   if (isNaN(int)) return undefined
   return int

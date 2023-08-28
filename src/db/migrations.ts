@@ -1,28 +1,28 @@
-import { Kysely, Migration, MigrationProvider, sql } from 'kysely'
+import { type Kysely, type Migration, type MigrationProvider, sql } from 'kysely'
 
 const migrations: Record<string, Migration> = {}
 
 export const migrationProvider: MigrationProvider = {
-  async getMigrations() {
+  async getMigrations () {
     return migrations
-  },
+  }
 }
 
 migrations['202308281223'] = {
-  async up(db: Kysely<unknown>) {
+  async up (db: Kysely<unknown>) {
     await db.schema.alterTable('list')
       .addColumn('createdAt', 'timestamp', (opts) => opts.notNull().defaultTo(sql`now()`))
       .execute()
-    await db.schema.createIndex("idx_list_on_created_at").on('list').column('createdAt').execute()
+    await db.schema.createIndex('idx_list_on_created_at').on('list').column('createdAt').execute()
   },
-  async down(db: Kysely<unknown>) {
+  async down (db: Kysely<unknown>) {
     await db.schema.dropIndex('idx_list_on_created_at').execute()
     await db.schema.alterTable('list').dropColumn('createdAt').execute()
   }
 }
 
 migrations['202308271617'] = {
-  async up(db: Kysely<unknown>) {
+  async up (db: Kysely<unknown>) {
     await db.schema.alterTable('membership').dropConstraint('uniq_memberships').execute()
     await db.schema.dropIndex('idx_membership_on_list_and_owner').execute()
 
@@ -41,7 +41,7 @@ migrations['202308271617'] = {
       .addColumn('name', 'varchar')
       .addColumn('isPublic', 'boolean', (col) => col.notNull().defaultTo(false))
       .execute()
-    
+
     await db.schema.createIndex('idx_list_on_owner_did').on('list').column('ownerDid').execute()
     await db.schema.createIndex('idx_list_on_id').on('list').column('ownerDid').execute()
 
@@ -54,12 +54,12 @@ migrations['202308271617'] = {
       .alterTable('membership')
       .addForeignKeyConstraint('fk_list_membership', ['listId'], 'list', ['id'])
       .execute()
-    
+
     await db.schema.alterTable('membership')
       .addUniqueConstraint('uniq_membership', ['listId', 'memberDid'])
       .execute()
   },
-  async down(db: Kysely<unknown>) {
+  async down (db: Kysely<unknown>) {
     await db.schema.alterTable('membership').dropConstraint('uniq_membership').execute()
     await db.schema.alterTable('membership').dropConstraint('fk_list_membership').execute()
     await db.schema.alterTable('membership').dropColumn('listId').execute()
@@ -78,7 +78,7 @@ migrations['202308271617'] = {
 }
 
 migrations['202308271129'] = {
-  async up(db: Kysely<unknown>) {
+  async up (db: Kysely<unknown>) {
     await db.schema
       .createTable('membership')
       .addColumn('id', 'serial', (col) => col.primaryKey())
@@ -87,7 +87,7 @@ migrations['202308271129'] = {
       .addColumn('listId', 'integer', (col) => col.notNull())
       .addUniqueConstraint('uniq_memberships', ['ownerDid', 'memberDid', 'listId'])
       .execute()
-    
+
     await db.schema
       .createIndex('idx_membership_on_member')
       .on('membership')
@@ -106,7 +106,7 @@ migrations['202308271129'] = {
     await db.schema.createIndex('idx_post_on_author').on('post').column('author').execute()
     await db.schema.createIndex('idx_post_on_indexedAt').on('post').column('indexedAt').execute()
   },
-  async down(db: Kysely<unknown>) {
+  async down (db: Kysely<unknown>) {
     await db.schema.dropTable('membership').cascade().execute()
     await db.schema.dropIndex('idx_post_on_author').execute()
     await db.schema.dropIndex('idx_post_on_indexedAt').execute()
@@ -115,7 +115,7 @@ migrations['202308271129'] = {
 }
 
 migrations['001'] = {
-  async up(db: Kysely<unknown>) {
+  async up (db: Kysely<unknown>) {
     await db.schema
       .createTable('post')
       .addColumn('uri', 'varchar', (col) => col.primaryKey())
@@ -130,8 +130,8 @@ migrations['001'] = {
       .addColumn('cursor', 'integer', (col) => col.notNull())
       .execute()
   },
-  async down(db: Kysely<unknown>) {
+  async down (db: Kysely<unknown>) {
     await db.schema.dropTable('post').execute()
     await db.schema.dropTable('sub_state').execute()
-  },
+  }
 }

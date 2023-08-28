@@ -1,8 +1,8 @@
 import { InvalidRequestError } from '@atproto/xrpc-server'
-import { QueryParams } from '../lexicon/types/app/bsky/feed/getFeedSkeleton'
+import { type QueryParams } from '../lexicon/types/app/bsky/feed/getFeedSkeleton'
 
-import { AppContext } from '../config'
-import { AlgoHandler } from '.'
+import { type AppContext } from '../config'
+import { type AlgoHandler } from '.'
 
 export const createHandler = (listId: string): AlgoHandler => {
   return async (ctx: AppContext, params: QueryParams, requesterDid: string | null) => {
@@ -12,15 +12,15 @@ export const createHandler = (listId: string): AlgoHandler => {
       .limit(1)
       .executeTakeFirst()
 
-    if (!list) {
+    if (list === undefined) {
       throw new InvalidRequestError(`No list found: ${listId}`)
     }
 
     if (!list.isPublic) {
-      if (!requesterDid) {
+      if (requesterDid === undefined) {
         throw new InvalidRequestError('This list is private and you are not authenticated')
       }
-      if (requesterDid != list.ownerDid) {
+      if (requesterDid !== list.ownerDid) {
         throw new InvalidRequestError(`This list is private and belongs to someone else. You can ask them to make it public or create your own lists at ${ctx.cfg.hostname}`)
       }
     }
@@ -33,10 +33,10 @@ export const createHandler = (listId: string): AlgoHandler => {
       .orderBy('indexedAt', 'desc')
       .orderBy('cid', 'desc')
       .limit(params.limit)
-  
-    if (params.cursor) {
+
+    if (params.cursor !== undefined) {
       const [indexedAt, cid] = params.cursor.split('::')
-      if (!indexedAt || !cid) {
+      if (cid === undefined) {
         throw new InvalidRequestError('malformed cursor')
       }
       const timeStr = new Date(parseInt(indexedAt, 10)).toISOString()
@@ -46,20 +46,20 @@ export const createHandler = (listId: string): AlgoHandler => {
         .where('post.cid', '<', cid)
     }
     const res = await builder.execute()
-  
+
     const feed = res.map((row) => ({
-      post: row.uri,
+      post: row.uri
     }))
-  
+
     let cursor: string | undefined
     const last = res.at(-1)
-    if (last) {
+    if (last !== undefined) {
       cursor = `${new Date(last.indexedAt).getTime()}::${last.cid}`
     }
-  
+
     return {
       cursor,
-      feed,
+      feed
     }
   }
 }

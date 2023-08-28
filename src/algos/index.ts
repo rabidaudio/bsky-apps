@@ -1,10 +1,10 @@
-import { AtUri } from '@atproto/uri'
+import { type AtUri } from '@atproto/uri'
 import {
-  QueryParams,
-  OutputSchema as AlgoOutput,
+  type QueryParams,
+  type OutputSchema as AlgoOutput
 } from '../lexicon/types/app/bsky/feed/getFeedSkeleton'
 
-import { AppContext } from '../config'
+import { type AppContext } from '../config'
 import { createHandler } from './list-feed'
 import { getUri } from '../util/membership'
 

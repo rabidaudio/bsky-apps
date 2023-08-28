@@ -1,8 +1,10 @@
 /* eslint-env node */
 module.exports = {
     extends: [
-        'eslint:recommended', 'plugin:@typescript-eslint/recommended',
-        "plugin:mocha/recommended"
+        'eslint:recommended',
+        'plugin:@typescript-eslint/recommended',
+        "plugin:mocha/recommended",
+        'standard-with-typescript'
     ],
     parser: '@typescript-eslint/parser',
     plugins: ['@typescript-eslint'],
@@ -10,6 +12,7 @@ module.exports = {
     ignorePatterns: [
         "node_modules/**/*",
         "src/lexicon/**/*",
+        "src/frontend/**/*",
         "dist/**/*"
     ],
     rules: {
@@ -18,6 +21,7 @@ module.exports = {
         // I feel like the syntax sufficiently indicates
         // better than a rule suppression comment
         "@typescript-eslint/no-extra-non-null-assertion": "off",
+        "@typescript-eslint/no-non-null-assertion": "off",
         "@typescript-eslint/no-unused-vars": [
             "error",
             { "argsIgnorePattern": "^_" }

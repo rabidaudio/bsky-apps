@@ -1,15 +1,14 @@
 import {
-  OutputSchema as RepoEvent,
-  isCommit,
+  type OutputSchema as RepoEvent,
+  isCommit
 } from './lexicon/types/com/atproto/sync/subscribeRepos'
 
 import { FirehoseSubscriptionBase, getOpsByType } from './util/subscription'
 
 export class FirehoseSubscription extends FirehoseSubscriptionBase {
-  async handleEvent(evt: RepoEvent) {
+  async handleEvent (evt: RepoEvent): Promise<void> {
     if (!isCommit(evt)) return
     const ops = await getOpsByType(evt)
-
 
     const postsToDelete = ops.posts.deletes.map((del) => del.uri)
     const postsToCreate = ops.posts.creates
@@ -21,7 +20,7 @@ export class FirehoseSubscription extends FirehoseSubscriptionBase {
           author: create.author,
           replyParent: create.record?.reply?.parent.uri ?? null,
           replyRoot: create.record?.reply?.root.uri ?? null,
-          indexedAt: new Date().toISOString(),
+          indexedAt: new Date().toISOString()
         }
       })
 

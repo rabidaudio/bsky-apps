@@ -1,10 +1,10 @@
 import * as yargs from 'yargs'
 
-import { Dependencies, createDependencies } from './config'
+import { type Dependencies, createDependencies } from './config'
 import { migrateToLatest, rollback } from './db'
 import FeedGenerator from './server'
 
-async function withDeps (callback: (deps: Dependencies) => Promise<void>) {
+async function withDeps (callback: (deps: Dependencies) => Promise<void>): Promise<void> {
   const deps = createDependencies()
   try {
     await callback(deps)
@@ -13,13 +13,14 @@ async function withDeps (callback: (deps: Dependencies) => Promise<void>) {
   }
 }
 
+/* eslint-disable @typescript-eslint/no-unused-expressions, @typescript-eslint/no-floating-promises */
 yargs
-  .scriptName("bsky-apps")
+  .scriptName('bsky-apps')
   .usage('$0 <cmd> [args]')
   .command('migrate:latest', 'Migrate to the latest version',
     async (_argv) => {
       await withDeps(async ({ db }) => {
-        console.log(`Migrating database`)
+        console.log('Migrating database')
         await migrateToLatest(db)
       })
     })

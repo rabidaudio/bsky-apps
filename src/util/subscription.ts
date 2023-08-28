@@ -4,42 +4,46 @@ import { Subscription } from '@atproto/xrpc-server'
 import { cborToLexRecord, readCar } from '@atproto/repo'
 import { BlobRef } from '@atproto/lexicon'
 import { ids, lexicons } from '../lexicon/lexicons'
-import { Record as PostRecord } from '../lexicon/types/app/bsky/feed/post'
-import { Record as RepostRecord } from '../lexicon/types/app/bsky/feed/repost'
-import { Record as LikeRecord } from '../lexicon/types/app/bsky/feed/like'
-import { Record as FollowRecord } from '../lexicon/types/app/bsky/graph/follow'
+import { type Record as PostRecord } from '../lexicon/types/app/bsky/feed/post'
+import { type Record as RepostRecord } from '../lexicon/types/app/bsky/feed/repost'
+import { type Record as LikeRecord } from '../lexicon/types/app/bsky/feed/like'
+import { type Record as FollowRecord } from '../lexicon/types/app/bsky/graph/follow'
 import {
-  Commit,
-  OutputSchema as RepoEvent,
-  isCommit,
+  type Commit,
+  type OutputSchema as RepoEvent,
+  isCommit
 } from '../lexicon/types/com/atproto/sync/subscribeRepos'
 
-import { Database } from '../db'
+import { type Database } from '../db'
+
+const delay = async (ms: number): Promise<void> => {
+  await new Promise((resolve) => setTimeout(resolve, ms))
+}
 
 export abstract class FirehoseSubscriptionBase {
   public sub: Subscription<RepoEvent>
 
-  constructor(public db: Database, public service: string, public retainHours: number) {
+  constructor (public db: Database, public service: string, public retainHours: number) {
     this.sub = new Subscription({
-      service: service,
+      service,
       method: ids.ComAtprotoSyncSubscribeRepos,
-      getParams: () => this.getCursor(),
+      getParams: async () => await this.getCursor(),
       validate: (value: unknown) => {
         try {
           return lexicons.assertValidXrpcMessage<RepoEvent>(
             ids.ComAtprotoSyncSubscribeRepos,
-            value,
+            value
           )
         } catch (err) {
           console.error('repo subscription skipped invalid message', err)
         }
-      },
+      }
     })
   }
 
-  abstract handleEvent(evt: RepoEvent): Promise<void>
+  abstract handleEvent (evt: RepoEvent): Promise<void>
 
-  async run(subscriptionReconnectDelay: number) {
+  async run (subscriptionReconnectDelay: number): Promise<void> {
     try {
       for await (const evt of this.sub) {
         try {
@@ -57,18 +61,19 @@ export abstract class FirehoseSubscriptionBase {
       }
     } catch (err) {
       console.error('repo subscription errored', err)
-      setTimeout(() => this.run(subscriptionReconnectDelay), subscriptionReconnectDelay)
+      await delay(subscriptionReconnectDelay)
+      await this.run(subscriptionReconnectDelay)
     }
   }
 
-  async truncateToMostRecent() {
+  async truncateToMostRecent (): Promise<void> {
     const retainSince = dayjs().subtract(this.retainHours, 'hours')
     await this.db.deleteFrom('post')
       .where('indexedAt', '<', retainSince.toISOString())
       .execute()
   }
 
-  async updateCursor(cursor: number) {
+  async updateCursor (cursor: number): Promise<void> {
     await this.db
       .updateTable('sub_state')
       .set({ cursor })
@@ -76,13 +81,13 @@ export abstract class FirehoseSubscriptionBase {
       .execute()
   }
 
-  async getCursor(): Promise<{ cursor?: number }> {
+  async getCursor (): Promise<{ cursor?: number }> {
     const res = await this.db
       .selectFrom('sub_state')
       .selectAll()
       .where('service', '=', this.service)
       .executeTakeFirst()
-    return res ? { cursor: res.cursor } : {}
+    return res !== undefined ? { cursor: res.cursor } : {}
   }
 }
 
@@ -92,7 +97,7 @@ export const getOpsByType = async (evt: Commit): Promise<OperationsByType> => {
     posts: { creates: [], deletes: [] },
     reposts: { creates: [], deletes: [] },
     likes: { creates: [], deletes: [] },
-    follows: { creates: [], deletes: [] },
+    follows: { creates: [], deletes: [] }
   }
 
   for (const op of evt.ops) {
@@ -102,9 +107,9 @@ export const getOpsByType = async (evt: Commit): Promise<OperationsByType> => {
     if (op.action === 'update') continue // updates not supported yet
 
     if (op.action === 'create') {
-      if (!op.cid) continue
+      if (op.cid === null) continue
       const recordBytes = car.blocks.get(op.cid)
-      if (!recordBytes) continue
+      if (recordBytes === undefined) continue
       const record = cborToLexRecord(recordBytes)
       const create = { uri, cid: op.cid.toString(), author: evt.repo }
       if (collection === ids.AppBskyFeedPost && isPost(record)) {
@@ -134,26 +139,26 @@ export const getOpsByType = async (evt: Commit): Promise<OperationsByType> => {
   return opsByType
 }
 
-type OperationsByType = {
+interface OperationsByType {
   posts: Operations<PostRecord>
   reposts: Operations<RepostRecord>
   likes: Operations<LikeRecord>
   follows: Operations<FollowRecord>
 }
 
-type Operations<T = Record<string, unknown>> = {
-  creates: CreateOp<T>[]
+interface Operations<T = Record<string, unknown>> {
+  creates: Array<CreateOp<T>>
   deletes: DeleteOp[]
 }
 
-type CreateOp<T> = {
+interface CreateOp<T> {
   uri: string
   cid: string
   author: string
   record: T
 }
 
-type DeleteOp = {
+interface DeleteOp {
   uri: string
 }
 
@@ -173,7 +178,7 @@ export const isFollow = (obj: unknown): obj is FollowRecord => {
   return isType(obj, ids.AppBskyGraphFollow)
 }
 
-const isType = (obj: unknown, nsid: string) => {
+const isType = (obj: unknown, nsid: string): boolean => {
   try {
     lexicons.assertValidRecord(nsid, fixBlobRefs(obj))
     return true
@@ -190,14 +195,14 @@ const fixBlobRefs = (obj: unknown): unknown => {
   if (Array.isArray(obj)) {
     return obj.map(fixBlobRefs)
   }
-  if (obj && typeof obj === 'object') {
+  if (obj !== undefined && obj !== null && typeof obj === 'object') {
     if (obj.constructor.name === 'BlobRef') {
       const blob = obj as BlobRef
       return new BlobRef(blob.ref, blob.mimeType, blob.size, blob.original)
     }
-    return Object.entries(obj).reduce((acc, [key, val]) => {
+    return Object.entries(obj).reduce<Record<string, unknown>>((acc, [key, val]) => {
       return Object.assign(acc, { [key]: fixBlobRefs(val) })
-    }, {} as Record<string, unknown>)
+    }, {})
   }
   return obj
 }

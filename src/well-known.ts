@@ -1,8 +1,8 @@
-import express from 'express'
+import express, { type Router } from 'express'
 
-import { AppContext } from './config'
+import { type AppContext } from './config'
 
-const makeRouter = (ctx: AppContext) => {
+const makeRouter = (ctx: AppContext): Router => {
   const router = express.Router()
 
   router.get('/.well-known/did.json', (_req, res) => {
@@ -16,9 +16,9 @@ const makeRouter = (ctx: AppContext) => {
         {
           id: '#bsky_fg',
           type: 'BskyFeedGenerator',
-          serviceEndpoint: `https://${ctx.cfg.hostname}`,
-        },
-      ],
+          serviceEndpoint: `https://${ctx.cfg.hostname}`
+        }
+      ]
     })
   })
 

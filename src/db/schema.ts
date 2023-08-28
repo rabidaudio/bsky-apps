@@ -1,13 +1,13 @@
-import { Generated } from 'kysely'
+import { type Generated } from 'kysely'
 
-export type DatabaseSchema = {
+export interface DatabaseSchema {
   post: Post
   sub_state: SubState
   membership: Membership
   list: List
 }
 
-export type List = {
+export interface List {
   id: string
   ownerDid: string
   name: string
@@ -15,13 +15,13 @@ export type List = {
   createdAt: Date
 }
 
-export type Membership = {
+export interface Membership {
   id: Generated<number>
   memberDid: string
   listId: string
 }
 
-export type Post = {
+export interface Post {
   uri: string
   cid: string
   author: string
@@ -30,7 +30,7 @@ export type Post = {
   indexedAt: string
 }
 
-export type SubState = {
+export interface SubState {
   service: string
   cursor: number
 }

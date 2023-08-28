@@ -1,7 +1,7 @@
 import { Kysely, Migrator, PostgresDialect } from 'kysely'
 import { Pool } from 'pg'
 
-import { DatabaseSchema } from './schema'
+import { type DatabaseSchema } from './schema'
 import { migrationProvider } from './migrations'
 
 export const createDb = (connectionString: string): Database => {
@@ -12,24 +12,26 @@ export const createDb = (connectionString: string): Database => {
         max: 10,
         // Heroku settings, see
         // https://devcenter.heroku.com/articles/connecting-heroku-postgres#connecting-in-node-js
-        ssl: process.env.NODE_ENV === 'production' ? {
-          rejectUnauthorized: false
-        } : false
+        ssl: process.env.NODE_ENV === 'production'
+          ? {
+              rejectUnauthorized: false
+            }
+          : false
       })
-    }),
+    })
   })
 }
 
-export const migrateToLatest = async (db: Database) => {
+export const migrateToLatest = async (db: Database): Promise<void> => {
   const migrator = new Migrator({ db, provider: migrationProvider })
   const { error } = await migrator.migrateToLatest()
-  if (error) throw error
+  if (error !== undefined) throw error as Error
 }
 
-export const rollback = async (db: Database) => {
+export const rollback = async (db: Database): Promise<void> => {
   const migrator = new Migrator({ db, provider: migrationProvider })
   const { error } = await migrator.migrateDown()
-  if (error) throw error
+  if (error !== undefined) throw error as Error
 }
 
 export type Database = Kysely<DatabaseSchema>
