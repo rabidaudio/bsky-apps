@@ -137,7 +137,7 @@ export class ListManager {
           displayName: list.name,
           description: this.getFullDescription(description),
           // avatar: avatarRef, // TODO: add images to feeds
-          createdAt: new Date().toISOString()
+          createdAt: list.createdAt.toISOString()
         }
       })
       return listToListResponse(list, memberHandles)
@@ -176,7 +176,8 @@ export class ListManager {
           record: {
             did: this.ctx.cfg.serviceDid,
             displayName: list.name,
-            description: this.getFullDescription(description ?? null)
+            description: this.getFullDescription(description ?? null),
+            createdAt: list.createdAt.toISOString()
           }
         })
       }
