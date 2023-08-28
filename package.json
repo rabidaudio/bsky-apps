@@ -16,7 +16,9 @@
     "app": "ts-node src/index.ts",
     "start:prod": "node dist start",
     "build": "tsc",
-    "test": "mocha test test/**/*.spec.js"
+    "test": "mocha test test/**/*.spec.cjs",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
   },
   "dependencies": {
     "@atproto/api": "^0.3.7",
@@ -40,7 +42,11 @@
     "@types/node": "^20.1.2",
     "@types/pg": "^8.10.2",
     "@types/yargs": "^17.0.24",
+    "@typescript-eslint/eslint-plugin": "^6.5.0",
+    "@typescript-eslint/parser": "^6.5.0",
     "chai": "^4.3.8",
+    "eslint": "^8.48.0",
+    "eslint-plugin-mocha": "^10.1.0",
     "mocha": "^10.2.0",
     "sinon": "^15.2.0",
     "supertest": "^6.3.3",

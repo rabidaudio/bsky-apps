@@ -46,10 +46,10 @@ export class HandleCache {
     async peek(args: { handle: string } | { did: string }): Promise<HandleDid | undefined> {
         await this.prepare()
         let qb = this.db.selectFrom('handle_lookup').selectAll()
-        if ((args as any).handle) {
-            qb = qb.where('handle', '=', (args as any).handle)
+        if ('handle' in args) {
+            qb = qb.where('handle', '=', args.handle)
         } else {
-            qb = qb.where('did', '=', (args as any).did)
+            qb = qb.where('did', '=', args.did)
         }
         return await qb.limit(1).executeTakeFirst()
     }

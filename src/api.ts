@@ -22,7 +22,7 @@ export type ListResponse = {
 }
 
 export default function makeRouter (ctx: AppContext): Router {
-    var router = express.Router()
+    const router = express.Router()
     router.use(bodyParser.json())
 
     // Since ATP decided to use Express instead of Koa, there's some hacky stuff to be able to
@@ -115,7 +115,7 @@ export default function makeRouter (ctx: AppContext): Router {
     }))
 
 
-    const renderErrors = (error: Error, req: Request, res: Response, next: NextFunction) => {
+    const renderErrors = (error: Error, _req: Request, res: Response, _next: NextFunction) => {
         if (error instanceof UnauthenticatedError) {
             res.status(401)
         } else if (error instanceof BadFormatError) {

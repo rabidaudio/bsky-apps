@@ -1,3 +1,4 @@
+/* global Vue */
 const { createApp, ref } = Vue
 
 createApp({

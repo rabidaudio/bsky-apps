@@ -1,4 +1,5 @@
 import dayjs from 'dayjs'
+
 import { Subscription } from '@atproto/xrpc-server'
 import { cborToLexRecord, readCar } from '@atproto/repo'
 import { BlobRef } from '@atproto/lexicon'
@@ -12,6 +13,7 @@ import {
   OutputSchema as RepoEvent,
   isCommit,
 } from '../lexicon/types/com/atproto/sync/subscribeRepos'
+
 import { Database } from '../db'
 
 export abstract class FirehoseSubscriptionBase {

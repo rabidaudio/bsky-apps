@@ -1,6 +1,6 @@
 import { AtpAgent, AtpAgentLoginOpts, ComAtprotoRepoDeleteRecord, ComAtprotoRepoPutRecord } from '@atproto/api'
+
 import { HandleCache } from './handle'
-import { boolean } from 'yargs'
 
 export class InvalidHandleError extends Error {}
 

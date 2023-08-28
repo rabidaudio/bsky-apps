@@ -52,7 +52,7 @@ export class ListManager {
         // This is the folly of using a low-level ORM: no relations. We have
         // to either to n+1 queries or do a bunch of manual currying to create nested
         // relations. This sucks.
-        let lists: { [id: string]: ListResponse } = {}
+        const lists: { [id: string]: ListResponse } = {}
         for (const row of rows) {
             const handle = row.memberDid ? await this.api.resolveDid(row.memberDid) : null
             const existing = lists[row.id]
