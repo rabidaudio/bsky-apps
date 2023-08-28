@@ -1,9 +1,11 @@
 import { InvalidRequestError } from '@atproto/xrpc-server'
+import { AtUri } from '@atproto/uri'
+
 import { Server } from '../lexicon'
+import { validateAuth } from '../auth'
+
 import { AppContext } from '../config'
 import { getFeedHandler } from '../algos'
-import { validateAuth } from '../auth'
-import { AtUri } from '@atproto/uri'
 
 export default function (server: Server, ctx: AppContext) {
   server.app.bsky.feed.getFeedSkeleton(async ({ params, req }) => {
@@ -19,10 +21,8 @@ export default function (server: Server, ctx: AppContext) {
         'UnsupportedAlgorithm',
       )
     }
-    if (req.headers.authorization) {
-      ctx.requesterDid = await validateAuth(req, ctx.cfg.serviceDid, ctx.didResolver)
-    }
-    const body = await algo(ctx, params)
+    const requesterDid = req.headers.authorization ? (await validateAuth(req, ctx.cfg.serviceDid, ctx.didResolver)) : null
+    const body = await algo(ctx, params, requesterDid)
     return {
       encoding: 'application/json',
       body: body,

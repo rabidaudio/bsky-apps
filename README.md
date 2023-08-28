@@ -20,8 +20,9 @@ This app allows you to create lists that are unique to you. It works like this:
 This is a pretty quick-and-dirty project, so I've added some arbitrary caps to keep the scale manageable
 for now while I work out the kinks. If you run into any of these let me know and I'll see what can be done.
 
-- Lists are currently limited to 50 members
+- Lists are limited to 50 members
 - Only the last 48 hours worth of posts are available through the feed
+- Each user can have up to 5 lists
 - There's a limit of 1000 total lists for all users
 
 ### TODO
@@ -29,6 +30,7 @@ for now while I work out the kinks. If you run into any of these let me know and
 - [ ] Make the web UI for adding to lists
 - [ ] Filters: allow including/excluding: replies, reskeets, quote-reskeets
 - [ ] Smarter history: keep member posts for a reasonable time, say 2 weeks. keep all other posts for the past few hours (so you know it's working when you make a new list)
+- [ ] Find a way to encrypt list members
 - [ ] Add icon support
 
 Built using the [ATProto Feed Generator starter kit](https://github.com/bluesky-social/feed-generator) [docs](https://atproto.com/lexicons/app-bsky-feed).

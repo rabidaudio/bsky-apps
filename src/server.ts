@@ -1,14 +1,19 @@
 import http from 'http'
 import events from 'events'
 import express from 'express'
+import path from 'path'
+
 import { DidResolver, MemoryCache } from '@atproto/did-resolver'
 import { createServer } from './lexicon'
 import feedGeneration from './methods/feed-generation'
 import describeGenerator from './methods/describe-generator'
-import { createDb, Database, migrateToLatest } from './db'
+
+import { Database, migrateToLatest } from './db'
 import { FirehoseSubscription } from './subscription'
-import { AppContext, Config } from './config'
+import { AppContext, Config, Dependencies } from './config'
 import wellKnown from './well-known'
+import apiEndpoints from './api'
+import { HandleCache } from './util/handle'
 
 export class FeedGenerator {
   public app: express.Application
@@ -29,9 +34,9 @@ export class FeedGenerator {
     this.cfg = cfg
   }
 
-  static create(cfg: Config, db: Database) {
+  static create(deps: Dependencies) {
     const app = express()
-    const firehose = new FirehoseSubscription(db, cfg.subscriptionEndpoint, cfg.retainHistoryHours)
+    const firehose = new FirehoseSubscription(deps.db, deps.cfg.subscriptionEndpoint, deps.cfg.retainHistoryHours)
 
     const didCache = new MemoryCache()
     const didResolver = new DidResolver(
@@ -48,17 +53,17 @@ export class FeedGenerator {
       },
     })
     const ctx: AppContext = {
-      db,
+      ...deps,
       didResolver,
-      cfg,
     }
     feedGeneration(server, ctx)
     describeGenerator(server, ctx)
     app.use(server.xrpc.router)
+    app.use('/api', apiEndpoints(ctx))
     app.use(wellKnown(ctx))
-    // app.use(express.static(path.join(__dirname, 'frontend')))
+    app.use(express.static(path.join(__dirname, 'frontend')))
 
-    return new FeedGenerator(app, db, firehose, cfg)
+    return new FeedGenerator(app, deps.db, firehose, deps.cfg)
   }
 
   get host(): string {
@@ -68,7 +73,7 @@ export class FeedGenerator {
   async start(): Promise<http.Server> {
     await migrateToLatest(this.db)
     this.firehose.run(this.cfg.subscriptionReconnectDelay)
-    this.server = this.app.listen(this.cfg.port /*, this.cfg.listenHost*/)
+    this.server = this.app.listen(this.cfg.port)
     await events.once(this.server, 'listening')
     return this.server
   }

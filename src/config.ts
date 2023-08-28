@@ -2,16 +2,17 @@ import dotenv from 'dotenv'
 
 import { DidResolver } from '@atproto/did-resolver'
 
-import { Database } from './db'
+import { Database, createDb } from './db'
+import { HandleCache } from './util/handle'
 
 export type Dependencies = {
   db: Database
   cfg: Config
+  handleCache: HandleCache
 }
 
 export type AppContext = Dependencies & {
   didResolver: DidResolver
-  requesterDid?: string
 }
 
 export type Config = {
@@ -24,6 +25,12 @@ export type Config = {
   subscriptionReconnectDelay: number
   retainHistoryHours: number
   listSizeLimit: number
+  maxListsPerUser: number
+  maxTotalLists: number
+  handleCache: {
+    max: number
+    ttl: number
+  }
 }
 
 export const loadConfig = (): Config => {
@@ -47,7 +54,21 @@ export const loadConfig = (): Config => {
     serviceDid,
     retainHistoryHours: maybeInt(process.env.FEEDGEN_RETAIN_HISTORY_HOURS) ?? 48,
     listSizeLimit: 50, // maximum number of members of a list
+    maxListsPerUser: 5, // maximum number of lists a user can have
+    maxTotalLists: 1000, // total number of lists across all users
+    handleCache: {
+      max: 50_000,
+      ttl: (7 * 24 * 60 * 60 * 1000), // make sure to re-resolve handles every week since people can update them
+    }
   }
+}
+
+export const createDependencies = (): Dependencies => {
+  const cfg = loadConfig()
+  const db = createDb(cfg.databaseUrl)
+  const { max, ttl } = cfg.handleCache
+  const handleCache = new HandleCache(max, ttl)
+  return { cfg, db, handleCache }
 }
 
 const maybeStr = (val?: string) => {

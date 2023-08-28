@@ -1,3 +1,5 @@
+import { Generated } from 'kysely'
+
 export type DatabaseSchema = {
   post: Post
   sub_state: SubState
@@ -13,6 +15,7 @@ export type List = {
 }
 
 export type Membership = {
+  id: Generated<number>
   memberDid: string
   listId: string
 }

@@ -1,11 +1,11 @@
 import { InvalidRequestError } from '@atproto/xrpc-server'
-import { QueryParams, OutputSchema as AlgoOutput } from '../lexicon/types/app/bsky/feed/getFeedSkeleton'
-import { AppContext } from '../config'
+import { QueryParams } from '../lexicon/types/app/bsky/feed/getFeedSkeleton'
 
-type AlgoHandler = (ctx: AppContext, params: QueryParams) => Promise<AlgoOutput>
+import { AppContext } from '../config'
+import { AlgoHandler } from '.'
 
 export const createHandler = (listId: string): AlgoHandler => {
-  return async (ctx: AppContext, params: QueryParams) => {
+  return async (ctx: AppContext, params: QueryParams, requesterDid: string | null) => {
     const list = await ctx.db.selectFrom('list')
       .selectAll()
       .where('id', '=', listId)
@@ -17,12 +17,11 @@ export const createHandler = (listId: string): AlgoHandler => {
     }
 
     if (!list.isPublic) {
-      const ownerDid = ctx.requesterDid
-      if (!ownerDid) {
-        throw new InvalidRequestError('Not authenticated')
+      if (!requesterDid) {
+        throw new InvalidRequestError('This list is private and you are not authenticated')
       }
-      if (ownerDid != list.ownerDid) {
-        throw new InvalidRequestError('Permission denied')
+      if (requesterDid != list.ownerDid) {
+        throw new InvalidRequestError(`This list is private and belongs to someone else. You can ask them to make it public or create your own lists at ${ctx.cfg.hostname}`)
       }
     }
 
