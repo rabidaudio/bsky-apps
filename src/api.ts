@@ -1,5 +1,6 @@
 import express, { type Request, type Response, type NextFunction, type Router, type RequestHandler } from 'express'
 import bodyParser from 'body-parser'
+import * as basicAuth from 'basic-auth'
 import { NoResultError } from 'kysely'
 
 import { type AppContext } from './config'
@@ -26,11 +27,14 @@ export default function makeRouter (ctx: AppContext): Router {
   // use async-await
   const authenticate = (handler: (req: Request, res: Response, api: Atp) => Promise<void>): RequestHandler =>
     (req: Request, res: Response, next: NextFunction) => {
-      const { identifier, password } = req.body
-      if (identifier === undefined || password === undefined) {
+      if (!('authorization' in req.headers)) {
         throw new UnauthenticatedError('Credentials required')
       }
-      ctx.atpFactory({ identifier, password }).then(async api => {
+      const auth = basicAuth.parse(req.headers.authorization)
+      if (auth === undefined) {
+        throw new UnauthenticatedError('Credential parse error')
+      }
+      ctx.atpFactory({ identifier: auth.name, password: auth.pass }).then(async api => {
         if (api === null) {
           throw new UnauthenticatedError('Credentials invalid')
         }
@@ -47,7 +51,7 @@ export default function makeRouter (ctx: AppContext): Router {
 
     res.status(200).json({
       type: 'data',
-      status: 'FOUND',
+      status: (lists.length === 0 ? 'NONE_FOUND' : 'FOUND'),
       data: lists
     })
   }))

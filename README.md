@@ -19,19 +19,14 @@ The UI is still being built, but the API is live, you can test it out yourself:
 
 ```bash
 # Create a list
-curl -vv -X POST -H 'Content-Type: application/json' -d '{
-    "identifier": "yourhandle.bsky.social",
-    "password": "app-password",
+curl -vv -X POST -u "yourhandle.bsky.social:app-password" -H 'Content-Type: application/json' -d '{
     "name": "My Cool List",
     "isPublic": false,
     "memberHandles": ["rabid.audio", "jay.bsky.team", "stovey.queerhou.se"]
 }' "https://bsky.rabid.audio/api/lists"
 
 # Delete a list (you'll need the id, which is the 15 hexadecimal chars at the end of the url)
-curl -vv -X DELETE -H 'Content-Type: application/json' -d '{
-    "identifier" :"yourhandle.bsky.social",
-    "password": "app-password"
-}' "https://bsky.rabid.audio/api/lists/deadbeef0123456"
+curl -vv -X DELETE -u "yourhandle.bsky.social:app-password" "https://bsky.rabid.audio/api/lists/deadbeef0123456"
 ```
 
 ### Current Limitations

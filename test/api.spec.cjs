@@ -78,9 +78,8 @@ describe("API", () => {
                 
                 const response = await request(app)
                     .get("/api/lists")
-                    .set('Content-Type', 'application/json')
+                    .auth(ownerHandle, 'fake-password')
                     .set('Accept', 'application/json')
-                    .send({ identifier: ownerHandle, password: 'fake-password' })
                 
                 expect(response.status).to.eq(200)
                 expect(response.body.type).to.eq('data')
@@ -117,11 +116,10 @@ describe("API", () => {
 
                 const response = await request(app)
                     .post("/api/lists")
+                    .auth(ownerHandle, 'fake-password')
                     .set('Content-Type', 'application/json')
                     .set('Accept', 'application/json')
                     .send({
-                        identifier: ownerHandle,
-                        password: 'fake-password',
                         name: "My List",
                         isPublic: false,
                         memberHandles: ["kathebooks.bsky.social"],
@@ -154,11 +152,10 @@ describe("API", () => {
 
                     const response = await request(app)
                         .post("/api/lists")
+                        .auth(ownerHandle, 'fake-password')
                         .set('Content-Type', 'application/json')
                         .set('Accept', 'application/json')
                         .send({
-                            identifier: ownerHandle,
-                            password: 'fake-password',
                             name: "My List",
                             isPublic: false,
                             memberHandles: [],
@@ -177,11 +174,10 @@ describe("API", () => {
 
                     const response = await request(app)
                         .post("/api/lists")
+                        .auth(ownerHandle, 'fake-password')
                         .set('Content-Type', 'application/json')
                         .set('Accept', 'application/json')
                         .send({
-                            identifier: ownerHandle,
-                            password: 'fake-password',
                             name: "My List",
                             isPublic: false,
                             memberHandles: new Array(200).map((_, i) => `user-${i}.bsky.social`),
@@ -206,11 +202,10 @@ describe("API", () => {
 
                     const response = await request(app)
                         .post("/api/lists")
+                        .auth(ownerHandle, 'fake-password')
                         .set('Content-Type', 'application/json')
                         .set('Accept', 'application/json')
                         .send({
-                            identifier: ownerHandle,
-                            password: 'fake-password',
                             name: "My List",
                             isPublic: false,
                             memberHandles: ["not-a-real-user.bsky.social"],
@@ -233,13 +228,10 @@ describe("API", () => {
 
                 const response = await request(app)
                     .put("/api/lists/14b5b3df0b00e4c")
+                    .auth(ownerHandle, 'fake-password')
                     .set('Content-Type', 'application/json')
                     .set('Accept', 'application/json')
-                    .send({
-                        identifier: ownerHandle,
-                        password: 'fake-password',
-                        memberHandles: ["rabid.audio"],
-                    })
+                    .send({ memberHandles: ["rabid.audio"] })
                 
                 expect(response.status).to.eq(200)
                 expect(response.body.type).to.eq('data')
@@ -266,11 +258,10 @@ describe("API", () => {
     
                     const response = await request(app)
                         .put("/api/lists/14b5b3df0b00e4c")
+                        .auth(ownerHandle, 'fake-password')
                         .set('Content-Type', 'application/json')
                         .set('Accept', 'application/json')
                         .send({
-                            identifier: ownerHandle,
-                            password: 'fake-password',
                             name: 'New Name',
                             isPublic: false
                         })
@@ -287,11 +278,38 @@ describe("API", () => {
             })
         })
 
-        // describe("belonging to someone else", () => {
-        //     it("should raise forbidden", async () => {
+        describe("belonging to someone else", () => {
+            it("should raise forbidden", async () => {
+                await withDb(async (db) => {
+                    await createList(db, "14b5b3df0b00e4c", "Public List", true, [ownerDid], "did:plc:o4wdtqgal63rsxiufwkuajzf")
+                    const putRepo = sinon.spy(() => Promise.resolve())
+                    const app = createServer(db, {
+                        ownerHandle,
+                        ownerDid,
+                        putRepo,
+                        resolveHandle,
+                        resolveDid,
+                    })
 
-        //     })
-        // })
+                    const response = await request(app)
+                        .put("/api/lists/14b5b3df0b00e4c")
+                        .auth(ownerHandle, 'fake-password')
+                        .set('Content-Type', 'application/json')
+                        .set('Accept', 'application/json')
+                        .send({
+                            name: 'I am hacking',
+                            isPublic: true,
+                            memberHandles: ["rabid.audio"]
+                        })
+
+                    expect(response.status).to.eq(403)
+                    expect(response.body.type).to.eq('error')
+                    expect(response.body.error.message).to.contain("this list belongs to someone else")
+                    
+                    expect(putRepo.called).to.be.false
+                })
+            })
+        })
     })
 
 
@@ -311,9 +329,8 @@ describe("API", () => {
 
                 const response = await request(app)
                     .delete("/api/lists/14b5b3df0b00e4c")
-                    .set('Content-Type', 'application/json')
+                    .auth(ownerHandle, 'fake-password')
                     .set('Accept', 'application/json')
-                    .send({ identifier: ownerHandle, password: 'fake-password' })
 
                 expect(response.status).to.eq(200)
                 expect(response.body.type).to.eq('data')
@@ -335,9 +352,9 @@ describe("API", () => {
 
                     const response = await request(app)
                         .delete("/api/lists/14b5b3df0b00e4c")
-                        .set('Content-Type', 'application/json')
+                        .auth(ownerHandle, 'fake-password')
                         .set('Accept', 'application/json')
-                        .send({ identifier: ownerHandle, password: 'fake-password' })
+
                     expect(response.status).to.eq(404)
                     expect(response.body.type).to.eq('error')
                 })
@@ -359,9 +376,9 @@ describe("API", () => {
 
                     const response = await request(app)
                         .delete("/api/lists/14b5b3df0b00e4c")
-                        .set('Content-Type', 'application/json')
+                        .auth(ownerHandle, 'fake-password')
                         .set('Accept', 'application/json')
-                        .send({ identifier: ownerHandle, password: 'fake-password' })
+
                     expect(response.status).to.eq(403)
                     expect(response.body.type).to.eq('error')
                     expect(response.body.error.message).to.contain("this list belongs to someone else")
@@ -386,9 +403,8 @@ describe("API", () => {
 
                     const response = await request(app)
                         .delete("/api/lists/14b5b3df0b00e4c")
-                        .set('Content-Type', 'application/json')
                         .set('Accept', 'application/json')
-                        .send()
+
                     expect(response.status).to.eq(401)
                     expect(response.body.type).to.eq('error')
                     expect(response.body.error.message).to.contain("Credentials required")
@@ -407,9 +423,10 @@ describe("API", () => {
 
                     const response = await request(app)
                         .delete("/api/lists/14b5b3df0b00e4c")
+                        .auth(ownerHandle, 'wrong-password')
                         .set('Content-Type', 'application/json')
                         .set('Accept', 'application/json')
-                        .send({ identifier: ownerHandle, password: 'wrong-password' })
+
                     expect(response.status).to.eq(401)
                     expect(response.body.type).to.eq('error')
                     expect(response.body.error.message).to.contain("Credentials invalid")
