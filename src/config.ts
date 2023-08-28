@@ -55,7 +55,7 @@ export const loadConfig = (): Config => {
       maybeInt(process.env.FEEDGEN_SUBSCRIPTION_RECONNECT_DELAY) ?? 3000,
     hostname,
     serviceDid,
-    retainHistoryHours: maybeInt(process.env.FEEDGEN_RETAIN_HISTORY_HOURS) ?? 48,
+    retainHistoryHours: maybeInt(process.env.FEEDGEN_RETAIN_HISTORY_HOURS) ?? (7 * 24),
     listSizeLimit: 50, // maximum number of members of a list
     maxListsPerUser: 5, // maximum number of lists a user can have
     maxTotalLists: 1000, // total number of lists across all users

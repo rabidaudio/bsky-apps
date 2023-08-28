@@ -21,7 +21,9 @@ The UI is still being built, but the API is live, you can test it out yourself:
 # Create a list
 curl -vv -X POST -u "yourhandle.bsky.social:app-password" -H 'Content-Type: application/json' -d '{
     "name": "My Cool List",
+    "description": "All of my favorite people",
     "isPublic": false,
+    "includeReplies": true,
     "memberHandles": ["rabid.audio", "jay.bsky.team", "stovey.queerhou.se"]
 }' "https://bsky.rabid.audio/api/lists"
 
@@ -42,9 +44,8 @@ for now while I work out the kinks. If you run into any of these let me know and
 ### TODO
 
 - [ ] Make the web UI for adding to lists
-- [ ] Filters: allow including/excluding: replies, reskeets, quote-reskeets
+- [ ] Filters: allow including/excluding: ~~replies~~, reskeets, quote-reskeets
 - [ ] Smarter history: keep member posts for a reasonable time, say 2 weeks. keep all other posts for the past few hours (so you know it's working when you make a new list)
-- [ ] custom descriptions
 - [ ] Find a way to encrypt list members
 - [ ] Add icon support
 

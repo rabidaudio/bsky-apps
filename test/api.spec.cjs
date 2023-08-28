@@ -121,7 +121,9 @@ describe("API", () => {
                     .set('Accept', 'application/json')
                     .send({
                         name: "My List",
+                        description: "What a good list",
                         isPublic: false,
+                        includeReplies: true,
                         memberHandles: ["kathebooks.bsky.social"],
                     })
                 
@@ -130,7 +132,9 @@ describe("API", () => {
                 expect(response.body.status).to.eq('CREATED')
                 expect(response.body.data.id).to.match(/^[a-f0-9]{15}$/)
                 expect(response.body.data.name).to.eq('My List')
+                expect(response.body.data.description).to.eq('What a good list')
                 expect(response.body.data.isPublic).to.eq(false)
+                expect(response.body.data.includeReplies).to.eq(true)
                 expect(response.body.data.memberHandles[0]).to.eq("kathebooks.bsky.social")
 
                 const row = await db.selectFrom('list').selectAll()
@@ -157,7 +161,9 @@ describe("API", () => {
                         .set('Accept', 'application/json')
                         .send({
                             name: "My List",
+                            description: null,
                             isPublic: false,
+                            includeReplies: false,
                             memberHandles: [],
                         })
                     expect(response.status).to.eq(400)
@@ -179,7 +185,9 @@ describe("API", () => {
                         .set('Accept', 'application/json')
                         .send({
                             name: "My List",
+                            description: null,
                             isPublic: false,
+                            includeReplies: false,
                             memberHandles: new Array(200).map((_, i) => `user-${i}.bsky.social`),
                         })
                     expect(response.status).to.eq(400)
@@ -207,7 +215,9 @@ describe("API", () => {
                         .set('Accept', 'application/json')
                         .send({
                             name: "My List",
+                            description: null,
                             isPublic: false,
+                            includeReplies: false,
                             memberHandles: ["not-a-real-user.bsky.social"],
                         })
                     expect(response.status).to.eq(404)
@@ -263,6 +273,7 @@ describe("API", () => {
                         .set('Accept', 'application/json')
                         .send({
                             name: 'New Name',
+                            description: "updated today",
                             isPublic: false
                         })
                     
@@ -271,6 +282,7 @@ describe("API", () => {
                     expect(response.body.status).to.eq('UPDATED')
                     expect(response.body.data.id).to.eq('14b5b3df0b00e4c')
                     expect(response.body.data.name).to.eq('New Name')
+                    expect(response.body.data.description).to.eq('updated today')
                     expect(response.body.data.isPublic).to.eq(false)
 
                     expect(putRepo.calledOnce).to.be.true

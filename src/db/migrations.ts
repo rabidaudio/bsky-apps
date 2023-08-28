@@ -8,6 +8,17 @@ export const migrationProvider: MigrationProvider = {
   }
 }
 
+migrations['202308281650'] = {
+  async up (db: Kysely<unknown>) {
+    await db.schema.alterTable('list').addColumn('description', 'varchar(512)').execute()
+    await db.schema.alterTable('list').addColumn('includeReplies', 'boolean', (opts) => opts.notNull().defaultTo(true)).execute()
+  },
+  async down (db: Kysely<unknown>) {
+    await db.schema.alterTable('list').dropColumn('description').execute()
+    await db.schema.alterTable('list').dropColumn('includeReplies').execute()
+  }
+}
+
 migrations['202308281223'] = {
   async up (db: Kysely<unknown>) {
     await db.schema.alterTable('list')

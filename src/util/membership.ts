@@ -23,11 +23,13 @@ export const generateUniqueListId = (): string => {
 }
 
 const listToListResponse = (list: List, memberHandles: string[]): ListResponse => {
-  const { name, isPublic, id, createdAt } = list
+  const { id, name, description, isPublic, includeReplies, createdAt } = list
   return {
     id,
-    name,
+    name: name ?? null,
+    description: description ?? null,
     isPublic,
+    includeReplies,
     createdAt,
     memberHandles,
     uri: getUri(list).toString()
@@ -44,6 +46,8 @@ export class ListManager {
         'list.id',
         'list.isPublic',
         'list.name',
+        'list.description',
+        'list.includeReplies',
         'list.ownerDid',
         'list.createdAt',
         'membership.memberDid'
@@ -62,11 +66,13 @@ export class ListManager {
       if (existing !== undefined && handle !== null) {
         existing.memberHandles.push(handle)
       } else {
-        const { id, name, isPublic, createdAt } = row
+        const { id, name, description, isPublic, includeReplies, createdAt } = row
         lists[row.id] = {
           id,
           name,
+          description,
           isPublic,
+          includeReplies,
           createdAt,
           uri: getUri(row).toString(),
           memberHandles: (handle === null ? [] : [handle])
@@ -84,8 +90,12 @@ export class ListManager {
     return await this.ctx.db.transaction().execute(handler)
   }
 
+  private getFullDescription (description: string | null): string {
+    return `${description ?? ''}\n\nThis is custom list feed for ${this.api.ownerHandle}, generated using ${this.ctx.cfg.hostname}.`.trim()
+  }
+
   // Creates the list in the database and also publishes it to BlueSky
-  async createFeed (name: string, isPublic: boolean, memberHandles: string[]): Promise<ListResponse> {
+  async createFeed (name: string, description: string | null, isPublic: boolean, includeReplies: boolean, memberHandles: string[]): Promise<ListResponse> {
     const { existingListCount } = await this.ctx.db.selectFrom('list')
       .select([
         qb => qb.fn.count<number>('list.id').as('existingListCount')
@@ -100,7 +110,15 @@ export class ListManager {
     return await this.inTransaction(async (trx) => {
       // create the list in the database
       const list = await trx.insertInto('list')
-        .values({ id: generateUniqueListId(), ownerDid: this.api.ownerDid, name, isPublic, createdAt: new Date() })
+        .values({
+          id: generateUniqueListId(),
+          ownerDid: this.api.ownerDid,
+          name,
+          description,
+          isPublic,
+          includeReplies,
+          createdAt: new Date()
+        })
         .returningAll()
         .executeTakeFirstOrThrow()
 
@@ -117,7 +135,7 @@ export class ListManager {
         record: {
           did: this.ctx.cfg.serviceDid,
           displayName: list.name,
-          description: `A custom list feed for ${this.api.ownerHandle}, generated using ${this.ctx.cfg.hostname}`,
+          description: this.getFullDescription(description),
           // avatar: avatarRef, // TODO: add images to feeds
           createdAt: new Date().toISOString()
         }
@@ -126,17 +144,17 @@ export class ListManager {
     })
   }
 
-  async updateFeed (listId: string, args: { name?: string, isPublic?: boolean, memberHandles?: string[] }): Promise<ListResponse> {
-    const { name, isPublic, memberHandles } = args
+  async updateFeed (listId: string, args: { name?: string, description?: string | null, isPublic?: boolean, includeReplies?: boolean, memberHandles?: string[] }): Promise<ListResponse> {
+    const { name, description, isPublic, includeReplies, memberHandles } = args
     let list = await this.getList(listId)
     if (list.ownerDid !== this.api.ownerDid) {
       throw new ForbiddenError('Forbidden: this list belongs to someone else')
     }
     return await this.inTransaction(async (trx) => {
       // update list parameters
-      if (name !== undefined || isPublic !== undefined) {
+      if (name !== undefined || isPublic !== undefined || includeReplies !== undefined || description !== undefined) {
         list = await trx.updateTable('list')
-          .set({ name, isPublic })
+          .set({ name, description, isPublic, includeReplies })
           .where('id', '=', listId)
           .returningAll()
           .executeTakeFirstOrThrow()
@@ -149,7 +167,7 @@ export class ListManager {
         await trx.insertInto('membership').values(rows).execute()
       }
 
-      if (name !== undefined) {
+      if (name !== undefined || description !== undefined) {
         // update the name on the api
         await this.api.putRepo({
           repo: this.api.ownerDid,
@@ -158,7 +176,7 @@ export class ListManager {
           record: {
             did: this.ctx.cfg.serviceDid,
             displayName: list.name,
-            description: `A custom list feed for ${this.api.ownerHandle}, generated using ${this.ctx.cfg.hostname}`
+            description: this.getFullDescription(description ?? null)
           }
         })
       }

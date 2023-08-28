@@ -13,8 +13,10 @@ class BadFormatError extends Error {}
 export interface ListResponse {
   id: string
   uri: string
-  name: string
+  name: string | null
+  description: string | null
   isPublic: boolean
+  includeReplies: boolean
   memberHandles: string[]
   createdAt: Date
 }
@@ -57,14 +59,20 @@ export default function makeRouter (ctx: AppContext): Router {
   }))
 
   router.post('/lists', listEndpoint(async (req: Request, res: Response, manager: ListManager) => {
-    const { name, isPublic, memberHandles } = req.body
+    const { name, description, isPublic, includeReplies, memberHandles } = req.body
     // And this is the practical limitation of typescript. There's no actual runtime checking, so you end
     // up manually writing all this validation logic. This stuff should be declarative.
     if (name === undefined || typeof (name) !== 'string') {
       throw new BadFormatError('Invalid argument: name')
     }
+    if (description !== null && typeof description !== 'string') {
+      throw new BadFormatError('Invalid argument: description')
+    }
     if (isPublic !== true && isPublic !== false) {
       throw new BadFormatError('Invalid argument: isPublic')
+    }
+    if (includeReplies !== true && includeReplies !== false) {
+      throw new BadFormatError('Invalid argument: includeReplies')
     }
     if (!Array.isArray(memberHandles) || memberHandles.length < 1) {
       throw new BadFormatError('Invalid argument: memberHandles')
@@ -72,7 +80,7 @@ export default function makeRouter (ctx: AppContext): Router {
     if (memberHandles.length > ctx.cfg.listSizeLimit) {
       throw new BadFormatError(`Invalid argument: memberHandles. Lists are limited to ${ctx.cfg.listSizeLimit} members`)
     }
-    const list = await manager.createFeed(name, isPublic, memberHandles)
+    const list = await manager.createFeed(name, description, isPublic, includeReplies, memberHandles)
 
     res.status(200).json({
       type: 'data',
@@ -82,9 +90,12 @@ export default function makeRouter (ctx: AppContext): Router {
   }))
 
   router.put('/lists/:id', listEndpoint(async (req: Request, res: Response, manager: ListManager) => {
-    const { name, isPublic, memberHandles } = req.body
+    const { name, description, isPublic, memberHandles } = req.body
     if (name !== undefined && typeof name !== 'string') {
       throw new BadFormatError('Invalid argument: name')
+    }
+    if (description !== undefined && description !== null && typeof description !== 'string') {
+      throw new BadFormatError('Invalid argument: description')
     }
     if (isPublic !== undefined && isPublic !== true && isPublic !== false) {
       throw new BadFormatError('Invalid argument: isPublic')
@@ -98,7 +109,7 @@ export default function makeRouter (ctx: AppContext): Router {
       }
     }
 
-    const list = await manager.updateFeed(req.params.id, { name, isPublic, memberHandles })
+    const list = await manager.updateFeed(req.params.id, { name, description, isPublic, memberHandles })
     res.status(200).json({
       type: 'data',
       status: 'UPDATED',

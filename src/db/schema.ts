@@ -10,8 +10,10 @@ export interface DatabaseSchema {
 export interface List {
   id: string
   ownerDid: string
-  name: string
+  name: string | null
+  description: string | null
   isPublic: boolean
+  includeReplies: boolean
   createdAt: Date
 }
 
