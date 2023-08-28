@@ -41,11 +41,11 @@ yargs
     })
   .command('start', 'Run the web server',
     async (argv) => {
-      await withDeps(async ({ cfg, db }) => {
-        const server = FeedGenerator.create(cfg, db)
-        await server.start()
-        console.log(`🤖 running feed generator at ${server.host}`)
-      })
+      const cfg = loadConfig()
+      const db = createDb(cfg.databaseUrl)
+      const server = FeedGenerator.create(cfg, db)
+      await server.start()
+      console.log(`🤖 running feed generator at ${server.host}`)
     })
   .command('create <name> [members...]', 'Create a new feed',
     (yargs) =>
