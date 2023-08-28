@@ -1,17 +1,15 @@
 import { AtpAgent } from '@atproto/api'
 import SqliteDb from 'better-sqlite3'
 import { Kysely, Generated, SqliteDialect } from 'kysely'
-import { From } from 'kysely/dist/cjs/parser/table-parser'
 
-type HandleDid = {
-    id: Generated<number>
+export type HandleDid = {
     handle: string
     did: string
     cachedAt: number
 }
 
 type Schema = {
-    handle_lookup: HandleDid
+    handle_lookup: HandleDid & { id: Generated<number> }
 }
 
 type DB = Kysely<Schema> 
@@ -34,6 +32,25 @@ export class HandleCache {
                 database: new SqliteDb(":memory:"),
             }),
         })
+    }
+
+    async getCacheSize(): Promise<number> {
+        await this.prepare()
+        const { rowCount } = await this.db.selectFrom('handle_lookup')
+            .select([qb => qb.fn.count<number>('id').as('rowCount')])
+            .executeTakeFirstOrThrow()
+        return rowCount
+    }
+
+    async peek(args: { handle: string } | { did: string }): Promise<HandleDid | undefined> {
+        await this.prepare()
+        let qb = this.db.selectFrom('handle_lookup').selectAll()
+        if ((args as any).handle) {
+            qb = qb.where('handle', '=', (args as any).handle)
+        } else {
+            qb = qb.where('did', '=', (args as any).did)
+        }
+        return await qb.limit(1).executeTakeFirst()
     }
 
     fetchDid(handle: string, onCacheMiss: () => Promise<string>): Promise<string> {
@@ -88,8 +105,8 @@ export class HandleCache {
         const idCutoff = id - this.max
         const ageCutoff = cachedAt - this.ttl
         await this.db.deleteFrom('handle_lookup')
-            .where('id', '<', idCutoff)
-            .where('cachedAt', '<', ageCutoff)
+            .where('id', '<=', idCutoff)
+            .orWhere('cachedAt', '<', ageCutoff)
             .execute()
         return otherValue
     }

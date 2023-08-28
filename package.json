@@ -15,7 +15,8 @@
     "start": "ts-node src/index.ts start",
     "app": "ts-node src/index.ts",
     "start:prod": "node dist start",
-    "build": "tsc"
+    "build": "tsc",
+    "test": "mocha test"
   },
   "dependencies": {
     "@atproto/api": "^0.3.7",
@@ -39,8 +40,14 @@
     "@types/node": "^20.1.2",
     "@types/pg": "^8.10.2",
     "@types/yargs": "^17.0.24",
+    "chai": "^4.3.8",
+    "mocha": "^10.2.0",
     "ts-node": "^10.9.1",
     "typescript": "^5.0.4"
+  },
+  "mocha": {
+    "require": "ts-node/register",
+    "spec": ["test/**/*.spec.js"]
   },
   "bugs": {
     "url": "https://github.com/rabidaudio/bsky-apps/issues"

@@ -23,13 +23,15 @@ for now while I work out the kinks. If you run into any of these let me know and
 - Lists are limited to 50 members
 - Only the last 48 hours worth of posts are available through the feed
 - Each user can have up to 5 lists
-- There's a limit of 1000 total lists for all users
+- There's a limit of 1000 total lists across all users
 
 ### TODO
 
+- [ ] unit tests
 - [ ] Make the web UI for adding to lists
 - [ ] Filters: allow including/excluding: replies, reskeets, quote-reskeets
 - [ ] Smarter history: keep member posts for a reasonable time, say 2 weeks. keep all other posts for the past few hours (so you know it's working when you make a new list)
+- [ ] custom descriptions
 - [ ] Find a way to encrypt list members
 - [ ] Add icon support
 
