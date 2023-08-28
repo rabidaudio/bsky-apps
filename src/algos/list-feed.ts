@@ -48,7 +48,7 @@ export const createHandler = (listId: string): AlgoHandler => {
         order by post."indexedAt" desc, post.cid desc
         limit 25
       */
-      // IDK if it's possible to build an efficent or-based index here.
+      // IDK if it's possible to build an efficient or-based index here.
       // simply adding indexes to uri and replyParent didn't help.
       builder = builder.where('post.replyParent', 'is', null)
     }
@@ -60,9 +60,10 @@ export const createHandler = (listId: string): AlgoHandler => {
       }
       const timeStr = new Date(parseInt(indexedAt, 10)).toISOString()
       builder = builder
-        .where('post.indexedAt', '<', timeStr)
-        .orWhere((qb) => qb.where('post.indexedAt', '=', timeStr))
-        .where('post.cid', '<', cid)
+        .where(qb =>
+          qb.where('post.indexedAt', '<', timeStr)
+            .orWhere(qb =>
+              qb.where('post.indexedAt', '=', timeStr).where('post.cid', '<', cid)))
     }
 
     const res = await builder.execute()
