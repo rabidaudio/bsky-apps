@@ -18,25 +18,32 @@ type DB = Kysely<Schema>
 // so that lookups can happen in either direction. This takes a slight
 // performance hit for a lower memory footprint
 export class HandleCache {
-  private readonly db: DB
-  private prepared: boolean
-  public max: number
-  public ttl: number
-
   // max number of records to retain, max amount of time to retain
-  constructor ({ max, ttl }: { max: number, ttl: number }) {
-    this.prepared = false
-    this.max = max
-    this.ttl = ttl
-    this.db = new Kysely<Schema>({
+  static async create ({ max, ttl }: { max: number, ttl: number }): Promise<HandleCache> {
+    const db = new Kysely<Schema>({
       dialect: new SqliteDialect({
         database: new SqliteDb(':memory:')
       })
     })
+
+    await db.schema.createTable('handle_lookup')
+      .addColumn('id', 'integer', (col) => col.autoIncrement().primaryKey())
+      .addColumn('handle', 'varchar', (col) => col.notNull())
+      .addColumn('did', 'varchar', (col) => col.notNull())
+      .addColumn('cachedAt', 'integer', (col) => col.notNull())
+      .execute()
+
+    await db.schema.createIndex('idx_handle')
+      .on('handle_lookup').column('handle').unique().execute()
+    await db.schema.createIndex('idx_did')
+      .on('handle_lookup').column('did').unique().execute()
+
+    return new HandleCache(max, ttl, db)
   }
 
+  constructor (public max: number, public ttl: number, private readonly db: DB) {}
+
   async getCacheSize (): Promise<number> {
-    await this.prepare()
     const { rowCount } = await this.db.selectFrom('handle_lookup')
       .select([qb => qb.fn.count<number>('id').as('rowCount')])
       .executeTakeFirstOrThrow()
@@ -44,7 +51,6 @@ export class HandleCache {
   }
 
   async peek (args: { handle: string } | { did: string }): Promise<HandleDid | undefined> {
-    await this.prepare()
     let qb = this.db.selectFrom('handle_lookup').selectAll()
     if ('handle' in args) {
       qb = qb.where('handle', '=', args.handle)
@@ -62,29 +68,8 @@ export class HandleCache {
     return await this.fetch('did', did, onCacheMiss)
   }
 
-  private async prepare (): Promise<void> {
-    if (this.prepared) return
-
-    const tables = await this.db.introspection.getTables()
-    const existingTable = tables.find(t => t.name === 'handle_lookup')
-    if (existingTable !== undefined) return
-
-    await this.db.schema.createTable('handle_lookup')
-      .addColumn('id', 'integer', (col) => col.autoIncrement().primaryKey())
-      .addColumn('handle', 'varchar', (col) => col.notNull())
-      .addColumn('did', 'varchar', (col) => col.notNull())
-      .addColumn('cachedAt', 'integer', (col) => col.notNull())
-      .execute()
-    await this.db.schema.createIndex('idx_handle')
-      .on('handle_lookup').column('handle').unique().execute()
-    await this.db.schema.createIndex('idx_did')
-      .on('handle_lookup').column('did').unique().execute()
-    this.prepared = true
-  }
-
   private async fetch (lookupColumn: 'did' | 'handle', value: string, onCacheMiss: () => Promise<string>): Promise<string> {
     const otherColumn = lookupColumn === 'handle' ? 'did' : 'handle'
-    await this.prepare()
     const row = await this.db.selectFrom('handle_lookup')
       .selectAll()
       .where(lookupColumn, '=', value)

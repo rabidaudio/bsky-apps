@@ -13,7 +13,26 @@ This app allows you to create lists that are unique to you. It works like this:
 
 1. You log in to this site using a BSky [App Password](https://bsky.app/settings/app-passwords) (**don't give me your account password, that would be unwise**)
 2. Create your list(s) here on this site. Lists can be public or private. If other users try to add your private list to their timeline, it will be empty and they will be unable to see who is on it. However, **the list name is public and will appear on your profile (on the web anyway) under the "Feeds" section.**
-1. Go to your profile (currently only supported on the web) and you should see a new "Feeds" section, where you can subscribe to these feeds.
+3. Go to your profile (currently only supported on the web) and you should see a new "Feeds" section, where you can subscribe to these feeds.
+
+The UI is still being built, but the API is live, you can test it out yourself:
+
+```bash
+# Create a list
+curl -vv -X POST -H 'Content-Type: application/json' -d '{
+    "identifier": "yourhandle.bsky.social",
+    "password": "app-password",
+    "name": "My Cool List",
+    "isPublic": false,
+    "memberHandles": ["rabid.audio", "jay.bsky.team", "stovey.queerhou.se"]
+}' "https://bsky.rabid.audio/api/lists"
+
+# Delete a list (you'll need the id, which is the 15 hexadecimal chars at the end of the url)
+curl -vv -X DELETE -H 'Content-Type: application/json' -d '{
+    "identifier" :"yourhandle.bsky.social",
+    "password": "app-password"
+}' "https://bsky.rabid.audio/api/lists/deadbeef0123456"
+```
 
 ### Current Limitations
 
@@ -27,7 +46,6 @@ for now while I work out the kinks. If you run into any of these let me know and
 
 ### TODO
 
-- [ ] unit tests
 - [ ] Make the web UI for adding to lists
 - [ ] Filters: allow including/excluding: replies, reskeets, quote-reskeets
 - [ ] Smarter history: keep member posts for a reasonable time, say 2 weeks. keep all other posts for the past few hours (so you know it's working when you make a new list)

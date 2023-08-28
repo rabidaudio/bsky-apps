@@ -67,10 +67,10 @@ export const loadConfig = (): Config => {
   }
 }
 
-export const createDependencies = (): Dependencies => {
+export const createDependencies = async (): Promise<Dependencies> => {
   const cfg = loadConfig()
   const db = createDb(cfg.databaseUrl)
-  const handleCache = new HandleCache(cfg.handleCache)
+  const handleCache = await HandleCache.create(cfg.handleCache)
   const atpFactory: AtpFactory = async (loginInfo) => await AtpApi.create(loginInfo, {
     readOnly: process.env.NODE_ENV !== 'production',
     handleCache

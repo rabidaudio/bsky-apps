@@ -5,7 +5,7 @@ import { migrateToLatest, rollback } from './db'
 import FeedGenerator from './server'
 
 async function withDeps (callback: (deps: Dependencies) => Promise<void>): Promise<void> {
-  const deps = createDependencies()
+  const deps = await createDependencies()
   try {
     await callback(deps)
   } finally {
@@ -40,7 +40,8 @@ yargs
     })
   .command('start', 'Run the web server',
     async (_argv) => {
-      const server = FeedGenerator.create(createDependencies())
+      const deps = await createDependencies()
+      const server = FeedGenerator.create(deps)
       await server.start()
       console.log(`🤖 running feed generator at ${server.host}`)
     })
