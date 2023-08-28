@@ -29,6 +29,7 @@ export type Config = {
   listSizeLimit: number
   maxListsPerUser: number
   maxTotalLists: number
+  logErrors: boolean
   handleCache: {
     max: number
     ttl: number
@@ -58,6 +59,7 @@ export const loadConfig = (): Config => {
     listSizeLimit: 50, // maximum number of members of a list
     maxListsPerUser: 5, // maximum number of lists a user can have
     maxTotalLists: 1000, // total number of lists across all users
+    logErrors: true,
     handleCache: {
       max: 50_000,
       ttl: (7 * 24 * 60 * 60 * 1000), // make sure to re-resolve handles every week since people can update them

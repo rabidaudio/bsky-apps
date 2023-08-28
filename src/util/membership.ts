@@ -1,10 +1,11 @@
 import crypto from 'crypto'
+import { Transaction } from 'kysely'
 
 import { AtUri } from '@atproto/api'
 import { ids } from '../lexicon/lexicons'
 
 import { Dependencies } from '../config'
-import { List } from '../db/schema'
+import { DatabaseSchema, List } from '../db/schema'
 import { ListResponse } from '../api'
 import { Atp } from './atp'
 
@@ -53,7 +54,7 @@ export class ListManager {
         // relations. This sucks.
         let lists: { [id: string]: ListResponse } = {}
         for (const row of rows) {
-            const handle = row.memberDid ? await this.api.resolveHandle(row.memberDid) : null
+            const handle = row.memberDid ? await this.api.resolveDid(row.memberDid) : null
             const existing = lists[row.id]
             if (existing && handle) {
                 existing.memberHandles.push(handle)
@@ -69,6 +70,14 @@ export class ListManager {
         return Object.values(lists)
     }
 
+    // It seems like Kysely doesn't support nested transactions
+    private inTransaction<T>(handler: (trx: Transaction<DatabaseSchema>) => Promise<T>): Promise<T> {
+        if (this.ctx.db instanceof Transaction) {
+            return handler(this.ctx.db)
+        }
+        return this.ctx.db.transaction().execute(handler)
+    }
+
     // Creates the list in the database and also publishes it to BlueSky
     async createFeed(name: string, isPublic: boolean, memberHandles: string[]): Promise<ListResponse> {    
         const { existingListCount } = await this.ctx.db.selectFrom('list')
@@ -82,19 +91,19 @@ export class ListManager {
         }
 
         // run all this in a transaction so if the upstream calls fail the db is rolled back
-        return await this.ctx.db.transaction().execute(async (trx) => {
+        return await this.inTransaction(async (trx) => {
             // create the list in the database
             const list = await trx.insertInto('list')
                 .values({ id: generateUniqueListId(), ownerDid: this.api.ownerDid, name, isPublic, createdAt: new Date() })
                 .returningAll()
                 .executeTakeFirstOrThrow()            
-    
+
             // convert handles to dids and save members
             const memberDids = await this.resolveHandles(memberHandles)
             await trx.insertInto('membership')
                 .values(memberDids.map(memberDid => ({ listId: list.id, memberDid })))
                 .execute()
-    
+
             await this.api.putRepo({
                 repo: this.api.ownerDid,
                 collection: ids.AppBskyFeedGenerator,
@@ -107,28 +116,32 @@ export class ListManager {
                     createdAt: new Date().toISOString(),
                 },
             })
-
             return listToListResponse(list, memberHandles)
         })
     }
 
-    async updateFeed(listId: string, name: string | undefined, isPublic: boolean | undefined, memberHandles: string[]): Promise<ListResponse> {
+    async updateFeed(listId: string, args: { name?: string, isPublic?: boolean, memberHandles?: string[] }): Promise<ListResponse> {
+        const { name, isPublic, memberHandles } = args
         let list = await this.getList(listId)
         if (list.ownerDid != this.api.ownerDid) {
             throw new ForbiddenError("Forbidden: this list belongs to someone else")
         }
-        return await this.ctx.db.transaction().execute(async (trx) => {
+        return await this.inTransaction(async (trx) => {
             // update list parameters
-            list = await trx.updateTable('list')
-                .set({ name, isPublic })
-                .where('id', '=', listId)
-                .returningAll()
-                .executeTakeFirstOrThrow()
+            if (name !== undefined || isPublic !== undefined) {
+                list = await trx.updateTable('list')
+                    .set({ name, isPublic })
+                    .where('id', '=', listId)
+                    .returningAll()
+                    .executeTakeFirstOrThrow()
+            }
 
             // update membership
-            await trx.deleteFrom('membership').where('listId', '=', listId).execute()
-            const rows = (await this.resolveHandles(memberHandles)).map(memberDid => ({ listId, memberDid }))
-            await trx.insertInto('membership').values(rows).execute()
+            if (memberHandles !== undefined) {
+                await trx.deleteFrom('membership').where('listId', '=', listId).execute()
+                const rows = (await this.resolveHandles(memberHandles)).map(memberDid => ({ listId, memberDid }))
+                await trx.insertInto('membership').values(rows).execute()
+            }
             
             if (name !== undefined) {
                 // update the name on the api
@@ -144,7 +157,7 @@ export class ListManager {
                 })
             }
 
-            return listToListResponse(list, memberHandles)
+            return listToListResponse(list, memberHandles || [])
         })
     }
 
@@ -153,7 +166,7 @@ export class ListManager {
         if (list.ownerDid != this.api.ownerDid) {
             throw new ForbiddenError("Forbidden: this list belongs to someone else")
         }
-        return await this.ctx.db.transaction().execute(async (trx) => {
+        return await this.inTransaction(async (trx) => {
 
             await trx.deleteFrom('membership').where('listId', '=', listId).execute()
             await trx.deleteFrom('list').where('id', '=', listId).execute()
