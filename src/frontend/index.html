@@ -16,53 +16,6 @@
             <h1>List Feed</h1>
             
             <h2>Overview</h2>
-            
-            <p>
-                Sometimes you want to see only posts from certain people, for example a group of close friends
-                or an organization.
-            </p>
-            
-            <p>
-                Eventually Bluesky will likely add support for feeds based on lists, but currently lists are only used
-                for mutes.
-                In the meantime, You could create your own feed with your own hard-coded list of people to follow.
-                But this sucks for two reasons. First it's a lot of work. And second, your feed would be public, so
-                anyone could see who was on your list. That's something you might not want if you're making a feed
-                for your secret crushes or nemeses or whatever.
-            </p>
-            
-            <p>
-                This app allows you to create lists that are unique to you. It works like this:
-            </p>
-            
-            <ol>
-                <li>You log in to this site using a BSky app password (see below)</li>
-                <li>
-                    You create your list(s) here on this site. There are 4 public list slots ("List 1", "List 2", etc.).
-                </li>
-                <li>
-                    You subscribe to the Feed(s). The feeds are public, but will lookup your personal list for that slot
-                    and show you those posts. Other people will see their own "List X" posts on their feed. If you don't
-                    create the list beforehand on this site, the feed will be empty.
-                </li>
-            </ol>
-            
-            <h3>Current Limitations</h3>
-            
-            <p>
-                This is a pretty quick-and-dirty project. If any of these limitations are an issue for you, reach out with your
-                use-case and I'll see what can be done.
-            </p>
-            
-            <ul>
-                <li>There are 4 list slots</li>
-                <li>Lists are limited to 250 members</li>
-                <li>Only the last 48 hours worth of posts are available through the feed</li>
-            </ul>
-            
-            <h2>Authenticating</h2>
-            
-            <!-- TODO -->
         </section>
 
         <div id="app">{{ message }}</div>
