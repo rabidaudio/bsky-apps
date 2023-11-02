@@ -1,5 +1,5 @@
 import { InvalidRequestError } from '@atproto/xrpc-server'
-import { AtUri } from '@atproto/uri'
+import { AtUri } from '@atproto/syntax'
 
 import { type Server } from '../lexicon'
 import { validateAuth } from '../auth'

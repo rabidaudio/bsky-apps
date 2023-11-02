@@ -1,7 +1,7 @@
 import type express from 'express'
 
 import { verifyJwt, AuthRequiredError } from '@atproto/xrpc-server'
-import { type DidResolver } from '@atproto/did-resolver'
+import { type DidResolver } from '@atproto/identity'
 
 export const validateAuth = async (
   req: express.Request,
@@ -14,6 +14,6 @@ export const validateAuth = async (
   }
   const jwt = authorization.replace('Bearer ', '').trim()
   return await verifyJwt(jwt, serviceDid, async (did: string) => {
-    return await didResolver.resolveAtprotoKey(did)
+    return await didResolver.resolveAtprotoKey(did, false)
   })
 }

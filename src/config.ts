@@ -1,6 +1,6 @@
 import dotenv from 'dotenv'
 
-import { type DidResolver } from '@atproto/did-resolver'
+import { type DidResolver } from '@atproto/identity'
 
 import { type Database, createDb } from './db'
 import { HandleCache } from './util/handle'

@@ -1,4 +1,4 @@
-import { type AtUri } from '@atproto/uri'
+import { type AtUri } from '@atproto/syntax'
 import {
   type QueryParams,
   type OutputSchema as AlgoOutput
