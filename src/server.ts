@@ -61,6 +61,11 @@ export class FeedGenerator {
     app.use('/api', apiEndpoints(ctx))
     app.use(wellKnown(ctx))
     app.use(express.static(path.join(__dirname, 'frontend')))
+    // Log errors
+    app.use((err, req, res, next) => {
+      console.error(err.stack)
+      next(err)
+    })
 
     return new FeedGenerator(app, deps.db, firehose, deps.cfg)
   }
